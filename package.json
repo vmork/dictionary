@@ -10,13 +10,17 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.51.1",
+    "@tanstack/react-query-devtools": "^5.51.1",
+    "@vercel/postgres": "^0.9.0",
     "cheerio": "^1.0.0-rc.12",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.5",
     "lucide-react": "^0.407.0",
     "next": "14.2.4",
     "react": "^18",
     "react-dom": "^18",
-    "tailwind-merge": "^2.4.0"
+    "tailwind-merge": "^2.4.0",
+    "tsx": "^4.16.2"
   },
   "devDependencies": {
     "@types/node": "^20",

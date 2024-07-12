@@ -1,6 +1,6 @@
 import { UseQueryResult } from "@tanstack/react-query"
-import { WordInfo, NotFound } from "./api/api"
-import { fetchWordInfo } from "./api/api"
+import { WordInfo, NotFound } from "./lib/scraping"
+import { fetchWordInfoFromWeb } from "./lib/scraping"
 import { Button } from "./Button"
 
 export default function WordPage({

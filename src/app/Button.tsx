@@ -1,6 +1,6 @@
 "use client"
 import { ReactNode, ButtonHTMLAttributes } from "react"
-import { cn } from "./utils"
+import { cn } from "./lib/utils"
 
 export function Button({
   children,

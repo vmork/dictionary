@@ -92,7 +92,7 @@ async function fetchTranslations(word: string) {
   return words
 }
 
-export async function fetchWordInfo(word: string): Promise<WordInfo | NotFound> {
+export async function fetchWordInfoFromWeb(word: string): Promise<WordInfo | NotFound> {
   const definitions = await fetchDefinitions(word)
   const translations = await fetchTranslations(word)
 
