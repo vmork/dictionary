@@ -8,10 +8,13 @@ type Definition = {
   example: string
 }
 
+type Source = "thesaurus" | "dictionary"
+
 export type WordInfo = {
   word: string
   definitions: Definition[]
   translations: string[]
+  source: Source
 }
 
 export class NotFound {
@@ -22,36 +25,52 @@ export class APIError {
   constructor(public message: string) {}
 }
 
+function removeBraces(s: string | undefined) {
+  return s?.replace(/\{([^}]+)\}/g, "")
+}
+
+function normalizeString(s: string) {
+  return s.replace(/[^\p{L}\p{N}\s-]/gu, "").toLowerCase()
+}
+
 function parseEntry(d: any): Definition[] {
-  console.log(d)
   return d.def[0].sseq
     .flat(Infinity)
     .filter((s: string | object) => s !== "sense")
     .map((s: any) => {
       return {
         wordType: d.fl,
-        definition: s.dt[0][1],
-        example: s.dt?.[1]?.[1]?.[0]?.t,
+        definition: removeBraces(s.dt[0][1]),
+        example: removeBraces(s.dt?.[1]?.[1]?.[0]?.t),
         synonyms: s?.syn_list?.flat(Infinity)?.map((syn: any) => syn.wd) ?? [],
       }
     })
 }
 
-async function fetchDefinitions(word: string): Promise<Definition[] | NotFound> {
-  let data, res
+async function fetchDefinitionsFromSource(
+  word: string,
+  source: "thesaurus" | "dictionary"
+): Promise<Definition[] | NotFound> {
+  const baseUrl = "https://www.dictionaryapi.com/api/v3/references"
+  const url =
+    source === "thesaurus"
+      ? `${baseUrl}/thesaurus/json/${encodeURIComponent(word)}?key=${
+          process.env.NEXT_PUBLIC_MERRIAM_WEBSTER_API_KEY_THESAURUS
+        }`
+      : `${baseUrl}/collegiate/json/${encodeURIComponent(word)}?key=${
+          process.env.NEXT_PUBLIC_MERRIAM_WEBSTER_API_KEY_DICTIONARY
+        }`
+
+  let data: any[]
+  let res: Response
   try {
-    res = await fetch(
-      `https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${encodeURIComponent(
-        word
-      )}?key=${process.env.NEXT_PUBLIC_MERRIAM_WEBSTER_API_KEY_THESAURUS}`,
-      { cache: "force-cache" }
-    )
+    res = await fetch(url, { cache: "force-cache" })
   } catch (e: any) {
-    throw new APIError(e.message)
+    throw new APIError(`(MW ${source}) ` + e.message)
   }
 
   if (!res.ok) {
-    throw new APIError(`(${res.status}) ${res.statusText}`)
+    throw new APIError(`(MW ${source}) ` + `(${res.status}) ${res.statusText}`)
   }
 
   const resText = await res.text()
@@ -60,14 +79,40 @@ async function fetchDefinitions(word: string): Promise<Definition[] | NotFound> 
     data = JSON.parse(resText)
   } catch (e: any) {
     console.error("in scraping", e.message)
-    throw new APIError(resText)
+    throw new APIError(`(MW ${source}) ` + resText)
   }
 
   if (!data[0]?.fl) {
     return new NotFound(data, word)
   }
 
-  return data.filter((d: any) => d?.hwi?.hw === word).flatMap(parseEntry)
+  const exact = data.filter((d: any) => normalizeString(d?.hwi?.hw) === word)
+
+  console.log("hws: ", data.map((d: any) => normalizeString(d.hwi.hw)))
+  console.log("word: ", word)
+
+  if (!exact.length) {
+    return new NotFound(
+      data.map((d: any) => d.hwi.hw),
+      word
+    )
+  }
+
+  return exact.flatMap(parseEntry)
+}
+
+async function fetchDefinitions(word: string): Promise<{definitions: Definition[] | NotFound, source: Source}> {
+  const thesaurusDefs = await fetchDefinitionsFromSource(word, "thesaurus")
+  console.log("thesarus defs: ", thesaurusDefs)
+  if (!(thesaurusDefs instanceof NotFound)) {
+    return { definitions: thesaurusDefs, source: "thesaurus" }
+  }
+  const dictionaryDefs = await fetchDefinitionsFromSource(word, "dictionary")
+  console.log("dictionary defs: ", dictionaryDefs)
+  if (!(dictionaryDefs instanceof NotFound)) {
+    return { definitions: dictionaryDefs, source: "dictionary" }
+  }
+  return { definitions: thesaurusDefs, source: "thesaurus" }
 }
 
 async function fetchTranslations(word: string) {
@@ -75,7 +120,7 @@ async function fetchTranslations(word: string) {
   try {
     res = await fetch(`https://www.wordreference.com/ensv/${encodeURIComponent(word)}`)
   } catch (e: any) {
-    throw new APIError(e.message)
+    throw new APIError("(translations)" + e.message)
   }
 
   const html = await res.text()
@@ -96,10 +141,8 @@ async function fetchTranslations(word: string) {
 
 export async function fetchWordInfoFromWeb(word: string): Promise<WordInfo | NotFound | APIError> {
   try {
-
-    const definitions = await fetchDefinitions(word)
+    const { definitions, source } = await fetchDefinitions(word)
     const translations = await fetchTranslations(word)
-    console.log(definitions, translations)
 
     if (definitions instanceof NotFound) {
       return definitions
@@ -109,6 +152,7 @@ export async function fetchWordInfoFromWeb(word: string): Promise<WordInfo | Not
       word,
       translations,
       definitions,
+      source,
     }
   } catch (e: any) {
     return new APIError(e.message)

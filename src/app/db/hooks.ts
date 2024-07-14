@@ -1,6 +1,5 @@
-import { NotFound as NotWord, WordInfo } from "../lib/scraping"
+import { WordInfo } from "../lib/scraping"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { fetchWordInfoFromWeb } from "../lib/scraping"
 import { WordsDataMap, WordsDBRow } from "./types"
 
 async function addWord(word: string, info: WordInfo) {
@@ -8,31 +7,32 @@ async function addWord(word: string, info: WordInfo) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ word, info }),
+    cache: "no-cache",
   })
   if (!res.ok) throw new Error(res.status + ": " + res.statusText)
 }
 
 async function deleteWord(word: string) {
-  const res = await fetch(`/api/word?word=${word}`, { method: "DELETE" })
+  const res = await fetch(`/api/word?word=${word}`, { method: "DELETE", cache: "no-cache" })
   if (!res.ok) throw new Error(res.status + ": " + res.statusText)
 }
 
 async function getWordInfo(word: string): Promise<WordInfo | null> {
-  const res = await fetch(`/api/word?word=${word}`)
+  const res = await fetch(`/api/word?word=${word}`, { cache: "no-cache" })
   if (!res.ok) return null
   return res?.json() ?? null
 }
 
 export async function getAllWords(): Promise<string[]> {
-  const res = await fetch("/api/allWords?info=false")
+  const res = await fetch("/api/allWords?info=false", { cache: "no-cache" })
   return res.json()
 }
 
 export async function getWordsDB(): Promise<WordsDataMap> {
-  const res = await fetch("/api/allWords?info=true")
-  const data: (WordsDBRow & {id: number})[] = await res.json()
+  const res = await fetch("/api/allWords?info=true", { cache: "no-cache" })
+  const data: (WordsDBRow & { id: number })[] = await res.json()
   const map: WordsDataMap = new Map()
-  data.forEach(row => map.set(row.word, row))
+  data.forEach((row) => map.set(row.word, row))
   return map
 }
 
@@ -42,7 +42,7 @@ export function useWordsDB() {
   return useQuery<WordsDataMap>({
     queryKey: ["wordsDB"],
     queryFn: getWordsDB,
-  })  
+  })
 }
 
 export function useWordList() {
