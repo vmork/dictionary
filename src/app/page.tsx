@@ -1,9 +1,15 @@
 "use client"
 
-import { fetchWordInfoFromWeb, NotFound, type WordInfo } from "./lib/scraping"
+import { APIError, fetchWordInfoFromWeb, NotFound, type WordInfo } from "./lib/scraping"
 import WordPage from "./wordPage"
-import { useState, useEffect, use } from "react"
-import { QueryClientProvider, QueryClient, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useState, useDeferredValue, Suspense } from "react"
+import {
+  QueryClientProvider,
+  QueryClient,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { Button } from "./Button"
 import { cn } from "./lib/utils"
@@ -24,6 +30,7 @@ export default function Page() {
 
 function Main() {
   const queryClient = useQueryClient()
+
   const [inputText, setInputText] = useState<string>("")
   const [currentWord, setCurrentWord] = useState<string>("")
 
@@ -35,18 +42,23 @@ function Main() {
   const addWordMutation = useAddWord()
   const deleteWordMutation = useDeleteWord()
 
-  const currentWordDataQuery = useQuery<WordInfo | NotFound, Error>({
+  const currentWordDataQuery = useSuspenseQuery<WordInfo | NotFound | APIError | null>({
     queryKey: ["word", currentWord],
-    enabled: currentWord !== "",
     queryFn: () => {
-      return wordsData.get(currentWord)?.dict_entry ?? fetchWordInfoFromWeb(currentWord)
+      if (currentWord === "") return null
+      if (wordsData.has(currentWord)) return wordsData.get(currentWord)!.dict_entry
+      return fetchWordInfoFromWeb(currentWord)
     },
-    retry: 1,
+    retry: 0,
   })
-  const currentWordData = currentWordDataQuery.data
+  const deferredCurrentWordDataQuery = useDeferredValue(currentWordDataQuery)
+  const wordDataIsStale = currentWordDataQuery !== deferredCurrentWordDataQuery
+
+  const currentWordData = deferredCurrentWordDataQuery.data
 
   const canAddCurrentWord =
     currentWord !== "" &&
+    !(currentWordData instanceof APIError) &&
     !wordList.includes(currentWord) &&
     currentWordData?.word === currentWord &&
     (currentWordData as WordInfo)?.definitions?.length // not NotFound
@@ -59,6 +71,7 @@ function Main() {
           queryClient.setQueryData(["wordsDB"], (old: WordsDataMap) => {
             const newMap = new Map(old)
             newMap.set(word, { word, dict_entry: info })
+            setInputText("")
             return newMap
           })
         },
@@ -139,16 +152,22 @@ function Main() {
 
         {/* Word info section */}
         <div className="p-2 overflow-auto">
-          {currentWord !== "" ? (
-            <WordPage
-              setCurrentWord={(word) => {
-                setInputText(word)
-                setCurrentWord(word)
-              }}
-              queryInfo={currentWordDataQuery}
-            />
+          {currentWordData instanceof APIError ? (
+            <h2 className="text-red-600 font-bold">API error: <span className="text-black font-normal">{currentWordData.message}</span></h2>
           ) : (
-            <></>
+            <Suspense fallback={<h2 className="text-3xl">Loading...</h2>}>
+              <div className={cn(
+                // wordDataIsStale && "opacity-50 pointer-events-none"
+              )}>
+                <WordPage
+                  setCurrentWord={(word) => {
+                    setInputText(word)
+                    setCurrentWord(word)
+                  }}
+                  data={currentWordData}
+                />
+              </div>
+            </Suspense>
           )}
         </div>
       </div>

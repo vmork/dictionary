@@ -55,9 +55,11 @@ async function fetchDefinitions(word: string): Promise<Definition[] | NotFound> 
   }
 
   const resText = await res.text()
-  try { // sometimes returns 200 with an error message
+  try {
+    // sometimes returns 200 with an error message
     data = JSON.parse(resText)
   } catch (e: any) {
+    console.error("in scraping", e.message)
     throw new APIError(resText)
   }
 
@@ -92,19 +94,23 @@ async function fetchTranslations(word: string) {
   return words
 }
 
-export async function fetchWordInfoFromWeb(word: string): Promise<WordInfo | NotFound> {
-  const definitions = await fetchDefinitions(word)
-  const translations = await fetchTranslations(word)
+export async function fetchWordInfoFromWeb(word: string): Promise<WordInfo | NotFound | APIError> {
+  try {
 
-  console.log(definitions, translations)
+    const definitions = await fetchDefinitions(word)
+    const translations = await fetchTranslations(word)
+    console.log(definitions, translations)
 
-  if (definitions instanceof NotFound) {
-    return definitions
-  }
+    if (definitions instanceof NotFound) {
+      return definitions
+    }
 
-  return {
-    word,
-    translations,
-    definitions,
+    return {
+      word,
+      translations,
+      definitions,
+    }
+  } catch (e: any) {
+    return new APIError(e.message)
   }
 }

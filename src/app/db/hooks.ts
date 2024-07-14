@@ -38,18 +38,6 @@ export async function getWordsDB(): Promise<WordsDataMap> {
 
 // Hooks: useWordInfo, useWordList, useAddWord, useDeleteWord
 
-export function useWordInfo(word: string, wordList: string[]) {
-  return useQuery<WordInfo | NotWord, Error>({
-    queryKey: ["word", word],
-    enabled: word !== "",
-    queryFn: () => {
-      if (wordList.includes(word)) return getWordInfo(word) as unknown as WordInfo
-      return fetchWordInfoFromWeb(word)
-    },
-    retry: 1,
-  })
-}
-
 export function useWordsDB() {
   return useQuery<WordsDataMap>({
     queryKey: ["wordsDB"],

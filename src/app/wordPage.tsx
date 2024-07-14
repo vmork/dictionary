@@ -1,28 +1,18 @@
-import { UseQueryResult } from "@tanstack/react-query"
+import { UseSuspenseQueryResult } from "@tanstack/react-query"
 import { WordInfo, NotFound } from "./lib/scraping"
 import { fetchWordInfoFromWeb } from "./lib/scraping"
 import { Button } from "./Button"
 
 export default function WordPage({
-  queryInfo,
+  data,
   setCurrentWord,
 }: {
-  queryInfo: UseQueryResult<NotFound | WordInfo, Error>
+  data: WordInfo | NotFound | null
   setCurrentWord: (word: string) => void
 }) {
-  const { data, status, error } = queryInfo
 
-  if (status === "pending") {
-    return <div>Loading...</div>
-  }
-
-  if (status === "error") {
-    console.error(error)
-    return (
-      <div>
-        <h1 className="text-red-500 text-3xl">Error fetching data: </h1> <p>{error.message}</p>{" "}
-      </div>
-    )
+  if (data == null) {
+    return <span>Select a word</span>
   }
 
   if (data instanceof NotFound) {
