@@ -1,6 +1,7 @@
-import { NotFound as NotWord, WordInfo } from "./scraping"
+import { NotFound as NotWord, WordInfo } from "../lib/scraping"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { fetchWordInfoFromWeb } from "./scraping"
+import { fetchWordInfoFromWeb } from "../lib/scraping"
+import { WordsDataMap, WordsDBRow } from "./types"
 
 async function addWord(word: string, info: WordInfo) {
   const res = await fetch("/api/word", {
@@ -22,9 +23,17 @@ async function getWordInfo(word: string): Promise<WordInfo | null> {
   return res?.json() ?? null
 }
 
-export async function getAllWords() {
-  const res = await fetch("/api/allWords")
+export async function getAllWords(): Promise<string[]> {
+  const res = await fetch("/api/allWords?info=false")
   return res.json()
+}
+
+export async function getWordsDB(): Promise<WordsDataMap> {
+  const res = await fetch("/api/allWords?info=true")
+  const data: (WordsDBRow & {id: number})[] = await res.json()
+  const map: WordsDataMap = new Map()
+  data.forEach(row => map.set(row.word, row))
+  return map
 }
 
 // Hooks: useWordInfo, useWordList, useAddWord, useDeleteWord
@@ -39,6 +48,13 @@ export function useWordInfo(word: string, wordList: string[]) {
     },
     retry: 1,
   })
+}
+
+export function useWordsDB() {
+  return useQuery<WordsDataMap>({
+    queryKey: ["wordsDB"],
+    queryFn: getWordsDB,
+  })  
 }
 
 export function useWordList() {

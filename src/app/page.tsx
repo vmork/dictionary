@@ -7,8 +7,9 @@ import { QueryClientProvider, QueryClient, useQuery, useQueryClient } from "@tan
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { Button } from "./Button"
 import { cn } from "./lib/utils"
-import { getAllWords, useAddWord, useDeleteWord, useWordInfo, useWordList } from "./lib/hooks"
+import { useAddWord, useDeleteWord, useWordsDB } from "./db/hooks"
 import { X } from "lucide-react"
+import { WordsDataMap } from "./db/types"
 
 const queryClient = new QueryClient()
 
@@ -26,27 +27,40 @@ function Main() {
   const [inputText, setInputText] = useState<string>("")
   const [currentWord, setCurrentWord] = useState<string>("")
 
-  const wordListQuery = useWordList()
-  const wordList = wordListQuery.data ?? []
+  const wordsDataQuery = useWordsDB()
+  const wordsData: WordsDataMap = new Map()
+  wordsDataQuery.data?.forEach((row) => wordsData.set(row.word, row))
+  const wordList = Array.from(wordsData.keys())
 
   const addWordMutation = useAddWord()
   const deleteWordMutation = useDeleteWord()
-  const getWordQuery = useWordInfo(currentWord, wordList)
 
-  const currentWordInfo = getWordQuery.data
+  const currentWordDataQuery = useQuery<WordInfo | NotFound, Error>({
+    queryKey: ["word", currentWord],
+    enabled: currentWord !== "",
+    queryFn: () => {
+      return wordsData.get(currentWord)?.dict_entry ?? fetchWordInfoFromWeb(currentWord)
+    },
+    retry: 1,
+  })
+  const currentWordData = currentWordDataQuery.data
 
   const canAddCurrentWord =
     currentWord !== "" &&
     !wordList.includes(currentWord) &&
-    currentWordInfo?.word === currentWord &&
-    (currentWordInfo as WordInfo)?.definitions?.length
+    currentWordData?.word === currentWord &&
+    (currentWordData as WordInfo)?.definitions?.length // not NotFound
 
   function dbAddWord(word: string, info: WordInfo) {
     addWordMutation.mutate(
       { word, info },
       {
         onSuccess: () => {
-          queryClient.setQueryData(["wordList"], (old: string[]) => [...old, word])
+          queryClient.setQueryData(["wordsDB"], (old: WordsDataMap) => {
+            const newMap = new Map(old)
+            newMap.set(word, { word, dict_entry: info })
+            return newMap
+          })
         },
         onError: (e) => console,
       }
@@ -56,7 +70,11 @@ function Main() {
   function dbDeleteWord(word: string) {
     deleteWordMutation.mutate(word, {
       onSuccess: () => {
-        queryClient.setQueryData(["wordList"], (old: string[]) => old.filter((w) => w !== word))
+        queryClient.setQueryData(["wordsDB"], (old: WordsDataMap) => {
+          const newMap = new Map(old)
+          newMap.delete(word)
+          return newMap
+        })
         setCurrentWord("")
       },
       onError: (e) => console,
@@ -69,9 +87,10 @@ function Main() {
         className={`grid sm:grid-cols-[2fr_3fr] sm:grid-rows-1 sm:divide-x-4 sm:divide-y-0 
            grid-rows-[3fr_2fr] grid-cols-1 divide-y-reverse divide-y-4 divide-primary h-full overflow-auto`}
       >
-        <div className="p-2 flex m-4 flex-col overflow-auto row-start-2 sm:row-start-auto">
+        {/* Word list section */}
+        <div className="p-2 flex m-4 flex-col overflow-auto row-start-2 sm:row-start-auto relative">
           <h2 className="text-2xl font-bold mb-2">
-            {wordListQuery.isPending ? `Loading...` : `${wordList.length} words`}
+            {wordsDataQuery.isPending ? `Loading...` : `${wordList.length} words`}
           </h2>
           <ul className="flex sm:flex-col flex-row gap-2 sm:gap-1">
             {wordList.map((word, i) => (
@@ -95,7 +114,30 @@ function Main() {
               </li>
             ))}
           </ul>
+
+          {/* Input section */}
+          <div className="w-[95%] absolute bottom-0 pb-4 mt-2 flex gap-1">
+            <input
+              className="border-2 p-2 border-gray rounded-lg w-full"
+              type="text"
+              value={inputText}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setCurrentWord(inputText)
+                }
+              }}
+              onChange={(e) => setInputText(e.target.value)}
+            />
+            <Button
+              disabled={!canAddCurrentWord}
+              onClick={() => dbAddWord(currentWord, currentWordData as WordInfo)}
+            >
+              Add
+            </Button>
+          </div>
         </div>
+
+        {/* Word info section */}
         <div className="p-2 overflow-auto">
           {currentWord !== "" ? (
             <WordPage
@@ -103,32 +145,12 @@ function Main() {
                 setInputText(word)
                 setCurrentWord(word)
               }}
-              queryInfo={getWordQuery}
+              queryInfo={currentWordDataQuery}
             />
           ) : (
             <></>
           )}
         </div>
-      </div>
-
-      <div className="sm:w-[41%] sm:mx-0 mx-auto w-[100%] px-4 pb-4 mt-2 flex gap-1">
-        <input
-          className="border-2 p-2 border-gray rounded-lg w-full"
-          type="text"
-          value={inputText}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setCurrentWord(inputText)
-            }
-          }}
-          onChange={(e) => setInputText(e.target.value)}
-        />
-        <Button
-          disabled={!canAddCurrentWord}
-          onClick={() => dbAddWord(currentWord, currentWordInfo as WordInfo)}
-        >
-          Add
-        </Button>
       </div>
     </div>
   )
