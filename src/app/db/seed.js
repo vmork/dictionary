@@ -6,7 +6,9 @@ async function seed() {
     create table if not exists words (
       id serial primary key,
       word text not null unique,
-      dict_entry jsonb not null
+      dict_entry jsonb not null,
+      time_added timestamp with time zone 
+        not null default (current_timestamp at time zone 'Europe/Stockholm')
     )`
   
   console.log('Table created')

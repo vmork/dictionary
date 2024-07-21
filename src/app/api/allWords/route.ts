@@ -1,4 +1,4 @@
-import { sql, db } from "@vercel/postgres"
+import { db } from "@vercel/postgres"
 
 async function getWordList() {
   const client = await db.connect()

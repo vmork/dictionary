@@ -1,29 +1,5 @@
 import * as cheerio from "cheerio"
-import { ApiError } from "next/dist/server/api-utils"
-
-type Definition = {
-  wordType: string // e.g. noun, verb, etc.
-  definition: string
-  synonyms: string[]
-  example: string
-}
-
-type Source = "thesaurus" | "dictionary"
-
-export type WordInfo = {
-  word: string
-  definitions: Definition[]
-  translations: string[]
-  source: Source
-}
-
-export class NotFound {
-  constructor(public didYouMean: string[], public word: string) {}
-}
-
-export class APIError {
-  constructor(public message: string) {}
-}
+import { Definition, NotFound, APIError, DefinitionSource, WordInfoFromNet } from "./types"
 
 function removeBraces(s: string | undefined) {
   return s?.replace(/\{([^}]+)\}/g, "")
@@ -49,7 +25,7 @@ function parseEntry(d: any): Definition[] {
 
 async function fetchDefinitionsFromSource(
   word: string,
-  source: "thesaurus" | "dictionary"
+  source: DefinitionSource
 ): Promise<Definition[] | NotFound> {
   const baseUrl = "https://www.dictionaryapi.com/api/v3/references"
   const url =
@@ -101,7 +77,7 @@ async function fetchDefinitionsFromSource(
   return exact.flatMap(parseEntry)
 }
 
-async function fetchDefinitions(word: string): Promise<{definitions: Definition[] | NotFound, source: Source}> {
+async function fetchDefinitions(word: string): Promise<{definitions: Definition[] | NotFound, source: DefinitionSource}> {
   const thesaurusDefs = await fetchDefinitionsFromSource(word, "thesaurus")
   console.log("thesarus defs: ", thesaurusDefs)
   if (!(thesaurusDefs instanceof NotFound)) {
@@ -139,7 +115,7 @@ async function fetchTranslations(word: string) {
   return words
 }
 
-export async function fetchWordInfoFromWeb(word: string): Promise<WordInfo | NotFound | APIError> {
+export async function fetchWordInfoFromWeb(word: string): Promise<WordInfoFromNet | NotFound | APIError> {
   try {
     const { definitions, source } = await fetchDefinitions(word)
     const translations = await fetchTranslations(word)
@@ -153,6 +129,7 @@ export async function fetchWordInfoFromWeb(word: string): Promise<WordInfo | Not
       translations,
       definitions,
       source,
+      type: "net",
     }
   } catch (e: any) {
     return new APIError(e.message)

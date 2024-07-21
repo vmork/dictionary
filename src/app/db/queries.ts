@@ -1,12 +1,12 @@
-import { WordInfo } from "../lib/scraping"
+import { WordInfo, WordInfoFromNet } from "../lib/types"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { WordsDataMap, WordsDBRow } from "./types"
+import { WordsDataMap, WordsDBRow } from "../lib/types"
 
-async function addWord(word: string, info: WordInfo) {
+async function addWord(word: string, info: WordInfo, timeString: string) {
   const res = await fetch("/api/word", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ word, info }),
+    body: JSON.stringify({ word, info, timeString }),
     cache: "no-cache",
   })
   if (!res.ok) throw new Error(res.status + ": " + res.statusText)
@@ -17,7 +17,7 @@ async function deleteWord(word: string) {
   if (!res.ok) throw new Error(res.status + ": " + res.statusText)
 }
 
-async function getWordInfo(word: string): Promise<WordInfo | null> {
+async function getWordInfo(word: string): Promise<WordInfoFromNet | null> {
   const res = await fetch(`/api/word?word=${word}`, { cache: "no-cache" })
   if (!res.ok) return null
   return res?.json() ?? null
@@ -55,7 +55,8 @@ export function useWordList() {
 export function useAddWord() {
   return useMutation({
     mutationKey: ["addWord"],
-    mutationFn: ({ word, info }: { word: string; info: WordInfo }) => addWord(word, info),
+    mutationFn: ({ word, info, timeString }: { word: string; info: WordInfo; timeString: string }) =>
+      addWord(word, info, timeString),
   })
 }
 
