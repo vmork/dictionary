@@ -1,16 +1,14 @@
-import { UseSuspenseQueryResult } from "@tanstack/react-query"
-import { WordInfo, NotFound } from "./lib/scraping"
-import { fetchWordInfoFromWeb } from "./lib/scraping"
-import { Button } from "./Button"
+import { DictEntry, NotFound } from "../../lib/dictionary/types"
+import { Button } from "../../components/Button"
 import Link from "next/link"
-import { cn } from "./lib/utils"
+import { cn, formatDateString } from "../../lib/utils"
 
-export default function WordPage({
+export default function WordDataPage({
   data,
   wordSet,
   setCurrentWord,
 }: {
-  data: WordInfo | NotFound | null
+  data: DictEntry | NotFound | null
   wordSet: Set<string>
   setCurrentWord: (word: string) => void
 }) {
@@ -41,10 +39,12 @@ export default function WordPage({
   }
 
   return (
-    <div className="p-2">
+    <div className="">
       <h1 className="text-5xl font-bold mb-2">{data.word}</h1>
 
-      <div className="text-sm text-neutral-400 flex gap-4">{wordSet.has(data.word) && <p>(In wordlist)</p>}</div>
+      { data.type === "db" &&  <div className="text-sm text-neutral-400 flex gap-4">
+        <p> Added at { formatDateString(data.timeAdded) }</p>
+      </div> }
 
       <h3 className="text-xl my-2">Translations:</h3>
       <ul className="flex flex-wrap gap-1 pb-2">
@@ -78,7 +78,7 @@ export default function WordPage({
             <ul className="flex gap-1 mt-0.5 flex-wrap">
               {d.synonyms.map((s, i) => (
                 <button
-                  key={i}
+                  key={s}
                   className={cn(
                     "bg-neutral-200 whitespace-nowrap px-1 py-0.5 rounded-md text-sm sm:hover:brightness-90",
                     wordSet.has(s) && "bg-primary",
