@@ -25,7 +25,8 @@ async function seed() {
       word text not null unique,
       dict_entry jsonb not null,
       time_added timestamp with time zone 
-        not null default (current_timestamp at time zone 'Europe/Stockholm')
+        not null default (current_timestamp at time zone 'Europe/Stockholm'),
+      practice_data jsonb not null default '{"numSeen": 0, "lastFive": [], "numCorrect": 0}'::jsonb
     );
   `
   // await sql`

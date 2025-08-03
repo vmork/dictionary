@@ -1,7 +1,62 @@
-import { DictEntry, NotFound } from "../../lib/dictionary/types"
+import { DictEntry, NotFound, PracticeData } from "../../lib/dictionary/types"
 import { Button } from "../../components/Button"
 import Link from "next/link"
 import { cn, formatDateString } from "../../lib/utils"
+import { Check, X } from "lucide-react"
+
+function PracticeStatsDisplay({ practiceData, timeAdded }: { practiceData: PracticeData; timeAdded: string }) {
+  const recallPercentage = practiceData.numSeen > 0 
+    ? Math.round((practiceData.numCorrect / practiceData.numSeen) * 100)
+    : 0
+
+  return (
+    <div className="text-sm text-neutral-400 flex items-center gap-2 flex-wrap mb-2">
+      {/* Recall percentage */}
+      <span>Recall: {practiceData.numCorrect}/{practiceData.numSeen} ({recallPercentage}%)</span>
+      
+      {/* Recent attempts - only show if there are attempts */}
+      {practiceData.lastFive.length > 0 && (
+        <>
+          <span className="hidden sm:inline">•</span>
+          <div className="flex items-center gap-1">
+            <span>Recent:</span>
+            <div className="flex gap-1">
+              {practiceData.lastFive.map((isCorrect, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "w-4 h-4 rounded-full flex items-center justify-center text-white",
+                    isCorrect 
+                      ? "bg-green-500" 
+                      : "bg-red-500"
+                  )}
+                >
+                  {isCorrect ? (
+                    <Check className="w-2.5 h-2.5" />
+                  ) : (
+                    <X className="w-2.5 h-2.5" />
+                  )}
+                </div>
+              ))}
+              {/* Fill remaining slots with empty circles if less than 5 */}
+              {Array.from({ length: 5 - practiceData.lastFive.length }).map((_, index) => (
+                <div
+                  key={`empty-${index}`}
+                  className="w-4 h-4 rounded-full border border-neutral-300"
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+      
+      <span className="hidden sm:inline">•</span>
+      
+      {/* Added date (without time) */}
+      <span>Added {formatDateString(timeAdded)}</span>
+    </div>
+  )
+}
 
 export default function WordDataPage({
   data,
@@ -42,9 +97,12 @@ export default function WordDataPage({
     <div className="">
       <h1 className="text-5xl font-bold mb-2">{data.word}</h1>
 
-      { data.type === "db" &&  <div className="text-sm text-neutral-400 flex gap-4">
-        <p> Added at { formatDateString(data.timeAdded) }</p>
-      </div> }
+      {data.type === "db" && (
+        <PracticeStatsDisplay 
+          practiceData={data.practiceData} 
+          timeAdded={data.timeAdded} 
+        />
+      )}
 
       <h3 className="text-xl my-2">Translations:</h3>
       <ul className="flex flex-wrap gap-1 pb-2">

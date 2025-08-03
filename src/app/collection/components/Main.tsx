@@ -86,7 +86,7 @@ export default function Main({ cid }: { cid: CollectionID }) {
       if (currentWord === "") return null
       if (wordsData.has(currentWord)) {
         const data = wordsData.get(currentWord)!
-        return { ...data.dict_entry, type: "db", timeAdded: data.time_added } as DictEntryFromDB
+        return { ...data.dict_entry, type: "db", timeAdded: data.time_added, practiceData: data.practice_data } as DictEntryFromDB
       }
       return await fetchWordInfoFromWeb(currentWord)
     },
@@ -119,11 +119,16 @@ export default function Main({ cid }: { cid: CollectionID }) {
         onSuccess: () => {
           queryClient.setQueryData(["wordsDB", cid], (old: WordsDataMap) => {
             const newMap = new Map(old)
-            newMap.set(word, { word, dict_entry: info, time_added: isoNow })
+            newMap.set(word, { 
+              word, 
+              dict_entry: info, 
+              time_added: isoNow,
+              practice_data: { numSeen: 0, lastFive: [], numCorrect: 0 }
+            })
             return newMap
           })
           queryClient.setQueryData(["word", word, cid], (old: DictEntryFromNet) => {
-            return { ...old, type: "db", timeAdded: isoNow } as DictEntryFromDB
+            return { ...old, type: "db", timeAdded: isoNow, practiceData: { numSeen: 0, lastFive: [], numCorrect: 0 } } as DictEntryFromDB
           })
         },
         onError: (e) => console,
@@ -171,12 +176,16 @@ export default function Main({ cid }: { cid: CollectionID }) {
             <div className="ml-3">
               <SortDropdown sortKeys={sortKeys} setSortKeys={setSortKeys} />
             </div>
-            <div className="flex ml-auto gap-3">
+            <div className="flex ml-auto gap-2">
               <Link href={`/`}>
-                <span className="underline text-neutral-400 hover:no-underline">Home</span>
+                <Button className="bg-primary hover:bg-primary text-dark text-sm px-3 py-1 transition-colors">
+                  Home
+                </Button>
               </Link>
               <Link href={`/practice?cid=${cid}`}>
-                <span className="underline text-neutral-400 hover:no-underline">Practice</span>
+                <Button className="bg-primary hover:bg-primary text-dark text-sm px-3 py-1 transition-colors">
+                  Practice
+                </Button>
               </Link>
             </div>
           </div>

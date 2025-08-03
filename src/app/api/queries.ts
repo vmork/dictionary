@@ -1,4 +1,4 @@
-import { DictEntry, DictEntryFromNet } from "../lib/dictionary/types"
+import { DictEntry, DictEntryFromNet, PracticeData } from "../lib/dictionary/types"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { WordsDataMap, DictDBRow } from "../lib/dictionary/types"
 import { Collection, CollectionID } from "@/app/lib/collections"
@@ -8,6 +8,26 @@ async function addWord(cid: CollectionID, word: string, info: DictEntry, timeStr
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cid, word, info, timeString }),
+    cache: "no-cache",
+  })
+  if (!res.ok) throw new Error(res.status + ": " + res.statusText)
+}
+
+async function updatePracticeData(cid: CollectionID, word: string, practiceData: PracticeData) {
+  const res = await fetch("/api/word", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "updatePracticeData", cid, word, practiceData }),
+    cache: "no-cache",
+  })
+  if (!res.ok) throw new Error(res.status + ": " + res.statusText)
+}
+
+async function resetAllPracticeData(cid: CollectionID) {
+  const res = await fetch("/api/word", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "resetAllPracticeData", cid }),
     cache: "no-cache",
   })
   if (!res.ok) throw new Error(res.status + ": " + res.statusText)
@@ -78,5 +98,20 @@ export function useDeleteWord(cid: CollectionID) {
   return useMutation({
     mutationKey: ["deleteWord", cid],
     mutationFn: (word: string) => deleteWord(cid, word),
+  })
+}
+
+export function useUpdatePracticeData(cid: CollectionID) {
+  return useMutation({
+    mutationKey: ["updatePracticeData", cid],
+    mutationFn: ({ word, practiceData }: { word: string; practiceData: PracticeData }) =>
+      updatePracticeData(cid, word, practiceData),
+  })
+}
+
+export function useResetAllPracticeData(cid: CollectionID) {
+  return useMutation({
+    mutationKey: ["resetAllPracticeData", cid],
+    mutationFn: () => resetAllPracticeData(cid),
   })
 }

@@ -16,9 +16,6 @@ function PracticePageContent() {
 
   return (
     <div className="flex flex-col h-full">
-      <Link href={`/collection?cid=${cid}`} className="">
-        <Button className="p-2 bg-neutral-300">Quit practice</Button>
-      </Link>
       <div className="w-full max-w-[640px] mx-auto h-full">
         <Practice cid={cid}/>
       </div>

@@ -27,6 +27,9 @@ const config: Config = {
         light: "#f7fafc",
         gray: "#8a8d91",
         primary: "#b9cddc",
+        secondary: "#a8c4d8", // Lighter blue for buttons
+        muted: "#e2e8f0", // Soft gray for backgrounds
+        border: "#d1d5db", // Subtle gray for borders
       }
     },
   },

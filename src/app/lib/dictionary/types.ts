@@ -1,7 +1,14 @@
+export type PracticeData = {
+  numSeen: number
+  lastFive: boolean[]
+  numCorrect: number
+}
+
 export type DictDBRow = {
   word: string
   dict_entry: DictEntry
   time_added: string
+  practice_data: PracticeData
 }
 
 export type WordsDataMap = Map<string, DictDBRow>
@@ -30,6 +37,7 @@ export type DictEntryFromNet = _DictEntry & {
 export type DictEntryFromDB = _DictEntry & {
   type: "db"
   timeAdded: string
+  practiceData: PracticeData
 }
 
 export type DictEntry = DictEntryFromNet | DictEntryFromDB

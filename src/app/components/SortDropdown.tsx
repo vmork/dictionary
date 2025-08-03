@@ -138,7 +138,7 @@ export function SortDropdown({ sortKeys, setSortKeys }: {
     <div className="relative" ref={dropdownRef}>
       <button
         className={cn(
-          "rounded px-3 py-1 bg-primary text-white transition text-center text-sm font-medium",
+          "rounded px-3 py-1 bg-primary transition text-center text-sm",
           "hover:brightness-110 shadow-sm"
         )}
         onClick={() => setDisplayPopup(!displayPopup)}

@@ -7,5 +7,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDateString(s: string) {
-  return DateTime.fromISO(s).toFormat("yyyy-MM-dd (HH:mm)")
+  return DateTime.fromISO(s).toFormat("dd-MM-yyyy")
 }
