@@ -148,7 +148,7 @@ export default function Main({ cid }: { cid: CollectionID }) {
   }
 
   const { width: screenWidth } = useScreenSize()
-  const isMobile = screenWidth ? screenWidth < 640 : false
+  const isMobile = screenWidth ? screenWidth < 700 : false
 
   function search() {
     updateCurrentWord(inputText.toLowerCase().trim())
@@ -215,7 +215,7 @@ export default function Main({ cid }: { cid: CollectionID }) {
                 Search
               </Button>
             ) : searchAddDeleteState === "delete" ? (
-              <Button onClick={() => dbDeleteWord(currentWord)}>Delete</Button>
+              <Button className={"bg-red-300"} onClick={() => dbDeleteWord(currentWord)}>Delete</Button>
             ) : (
               <Button
                 onClick={() => dbAddWord(currentWord, currentWordData as DictEntry)}

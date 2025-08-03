@@ -40,5 +40,3 @@ export async function GET(req: Request) {
   if (!info) return new Response(`Not found: ${word}`, { status: 404 })
   return Response.json(info)
 }
-
-export { insertWord, getWordInfo }

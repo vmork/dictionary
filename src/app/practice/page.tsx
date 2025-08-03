@@ -4,8 +4,9 @@ import Link from "next/link"
 import { Button } from "../components/Button"
 import Practice from "./components/Practice"
 import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 
-export default function PracticePage() {
+function PracticePageContent() {
   const searchParams = useSearchParams()
   const cidString  = searchParams.get("cid")
   if (!cidString || isNaN(Number(cidString))) {
@@ -16,11 +17,19 @@ export default function PracticePage() {
   return (
     <div className="flex flex-col h-full">
       <Link href={`/collection?cid=${cid}`} className="">
-        <Button className="p-2 bg-neutral-300">Quit</Button>
+        <Button className="p-2 bg-neutral-300">Quit practice</Button>
       </Link>
       <div className="w-full max-w-[640px] mx-auto h-full">
         <Practice cid={cid}/>
       </div>
     </div>
+  )
+}
+
+export default function PracticePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PracticePageContent />
+    </Suspense>
   )
 }

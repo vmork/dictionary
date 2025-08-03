@@ -59,7 +59,7 @@ function PracticeInner({ wordsData }: { wordsData: WordsDataMap }) {
   }
   if (gameStatus === "answer") {
     return (
-      <div className="flex items-center flex-col h-full pt-2 ">
+      <div className="flex items-center flex-col h-full pt-2 mx-4">
         <div className="overflow-y-auto flex-grow" >
           <WordDataPage data={currentWordData} wordSet={wordSet} setCurrentWord={() => null}></WordDataPage>
         </div>
