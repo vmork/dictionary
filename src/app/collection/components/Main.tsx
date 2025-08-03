@@ -17,6 +17,8 @@ import {
 } from "../../lib/dictionary/types"
 import { cn } from "../../lib/utils"
 import { Button } from "../../components/Button"
+import { SortDropdown } from "../../components/SortDropdown"
+import { defaultSortKeys, sortEntries, SortKey } from "../../lib/sorting"
 import WordDataPage from "./DictEntryPage"
 import { MoveLeft, MoveRight } from "lucide-react"
 import { CollectionID } from "@/app/lib/collections"
@@ -56,17 +58,22 @@ export default function Main({ cid }: { cid: CollectionID }) {
 
   const [inputText, setInputText] = useState<string>("")
   const [currentWord, setCurrentWord] = useState<string>("")
+  const [sortKeys, setSortKeys] = useState<SortKey[]>(defaultSortKeys)
 
   const wordsDataQuery = useWordsDB(cid)
   const wordsData: WordsDataMap = useMemo(() => wordsDataQuery.data ?? new Map(), [wordsDataQuery])
   const wordSet = useMemo(() => new Set(wordsData.keys()), [wordsData])
-  const wordList = useMemo(
-    () =>
-      Array.from(wordsData.entries())
-        .sort((a, b) => DateTime.fromISO(b[1].time_added).toMillis() - DateTime.fromISO(a[1].time_added).toMillis())
-        .map(([word, data]) => word),
-    [wordsData]
-  )
+  const wordList = useMemo(() => {
+    const entries = Array.from(wordsData.entries()).map(([word, data]) => ({
+      ...data.dict_entry,
+      type: "db" as const,
+      timeAdded: data.time_added,
+      word
+    })) as DictEntryFromDB[]
+    
+    const sortedEntries = sortEntries(entries, sortKeys)
+    return sortedEntries.map(entry => entry.word)
+  }, [wordsData, sortKeys])
 
   const addWordMutation = useAddWord(cid)
   const deleteWordMutation = useDeleteWord(cid)
@@ -161,11 +168,14 @@ export default function Main({ cid }: { cid: CollectionID }) {
             <h2 className="sm:text-2xl text-lg font-bold">
               {wordsDataQuery.isPending ? `Loading...` : `${wordSet.size} words`}
             </h2>
+            <div className="ml-3">
+              <SortDropdown sortKeys={sortKeys} setSortKeys={setSortKeys} />
+            </div>
             <div className="flex ml-auto gap-3">
-              <Link href={`/`} className="ml-auto">
+              <Link href={`/`}>
                 <span className="underline text-neutral-400 hover:no-underline">Home</span>
               </Link>
-              <Link href={`/practice?cid=${cid}`} className="ml-auto">
+              <Link href={`/practice?cid=${cid}`}>
                 <span className="underline text-neutral-400 hover:no-underline">Practice</span>
               </Link>
             </div>
