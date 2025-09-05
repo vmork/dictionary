@@ -1,19 +1,20 @@
-import { DictEntry, NotFound, PracticeData } from "../../lib/dictionary/types"
+import { DictEntry, NotFound, PracticeData } from "../../lib/types"
 import { Button } from "../../components/Button"
 import Link from "next/link"
 import { cn, formatDateString } from "../../lib/utils"
 import { Check, X } from "lucide-react"
 
 function PracticeStatsDisplay({ practiceData, timeAdded }: { practiceData: PracticeData; timeAdded: string }) {
-  const recallPercentage = practiceData.numSeen > 0 
-    ? Math.round((practiceData.numCorrect / practiceData.numSeen) * 100)
-    : 0
+  const recallPercentage =
+    practiceData.numSeen > 0 ? Math.round((practiceData.numCorrect / practiceData.numSeen) * 100) : 0
 
   return (
     <div className="text-sm text-neutral-400 flex items-center gap-2 flex-wrap mb-2">
       {/* Recall percentage */}
-      <span>Recall: {practiceData.numCorrect}/{practiceData.numSeen} ({recallPercentage}%)</span>
-      
+      <span>
+        Recall: {practiceData.numCorrect}/{practiceData.numSeen} ({recallPercentage}%)
+      </span>
+
       {/* Recent attempts - only show if there are attempts */}
       {practiceData.lastFive.length > 0 && (
         <>
@@ -26,32 +27,23 @@ function PracticeStatsDisplay({ practiceData, timeAdded }: { practiceData: Pract
                   key={index}
                   className={cn(
                     "w-4 h-4 rounded-full flex items-center justify-center text-white",
-                    isCorrect 
-                      ? "bg-green-500" 
-                      : "bg-red-500"
+                    isCorrect ? "bg-green-500" : "bg-red-500"
                   )}
                 >
-                  {isCorrect ? (
-                    <Check className="w-2.5 h-2.5" />
-                  ) : (
-                    <X className="w-2.5 h-2.5" />
-                  )}
+                  {isCorrect ? <Check className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}
                 </div>
               ))}
               {/* Fill remaining slots with empty circles if less than 5 */}
               {Array.from({ length: 5 - practiceData.lastFive.length }).map((_, index) => (
-                <div
-                  key={`empty-${index}`}
-                  className="w-4 h-4 rounded-full border border-neutral-300"
-                />
+                <div key={`empty-${index}`} className="w-4 h-4 rounded-full border border-neutral-300" />
               ))}
             </div>
           </div>
         </>
       )}
-      
+
       <span className="hidden sm:inline">•</span>
-      
+
       {/* Added date (without time) */}
       <span>Added {formatDateString(timeAdded)}</span>
     </div>
@@ -97,36 +89,39 @@ export default function WordDataPage({
     <div className="">
       <h1 className="text-5xl font-bold mb-2">{data.word}</h1>
 
-      {data.type === "db" && (
-        <PracticeStatsDisplay 
-          practiceData={data.practiceData} 
-          timeAdded={data.timeAdded} 
-        />
+      {data.type === "db" && <PracticeStatsDisplay practiceData={data.practiceData} timeAdded={data.timeAdded} />}
+
+      {/* Translations */}
+      {data.translations.length != 0 && (
+        <>
+          <h3 className="text-xl my-2 underline">Translations</h3>
+          <ul className="flex flex-wrap gap-1 pb-2">
+            {data.translations.map((t, i) => (
+              <li className="bg-neutral-200 whitespace-nowrap px-1 py-0.5 rounded-md text-sm" key={i}>
+                {t.word}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
-      <h3 className="text-xl my-2">Translations:</h3>
-      <ul className="flex flex-wrap gap-1 pb-2">
-        {data.translations.map((t, i) => (
-          <li className="bg-neutral-200 whitespace-nowrap px-1 py-0.5 rounded-md text-sm" key={i}>
-            {t}
-          </li>
-        ))}
-      </ul>
-
-      <h3 className="text-xl my-2">
-        Definitions:
+      {/* Definitions */}
+      <div className="flex items-center gap-2">
+        <h3 className="text-xl my-2 underline">Definitions</h3>
         <span className="text-sm text-neutral-400">
           {" "}
-          <Link
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:brightness-50 transition"
-            href={`https://www.merriam-webster.com/${data.source}/${encodeURIComponent(data.word)}`}
-          >
-            ({data.source})
-          </Link>
+          {data.definitionsSource && (
+            <Link
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:brightness-50 transition"
+              href={data.definitionsSource?.href ?? "about:blank"}
+            >
+              ({data.definitionsSource?.title})
+            </Link>
+          )}
         </span>
-      </h3>
+      </div>
       <ul className="space-y-3">
         {data.definitions.map((d, i) => (
           <li key={i}>
@@ -139,7 +134,7 @@ export default function WordDataPage({
                   key={s}
                   className={cn(
                     "bg-neutral-200 whitespace-nowrap px-1 py-0.5 rounded-md text-sm sm:hover:brightness-90",
-                    wordSet.has(s) && "bg-primary",
+                    wordSet.has(s) && "bg-primary"
                   )}
                   onClick={() => setCurrentWord(s)}
                 >
@@ -150,6 +145,24 @@ export default function WordDataPage({
           </li>
         ))}
       </ul>
+
+      {/* Etymology */}
+      {data.etymologies && (
+        <>
+          <h3 className="text-xl my-2 underline">Etymology</h3>
+          <ul className="space-y-3 max-w-[800px]">
+            {data.etymologies.map((e, i) => (
+              <li key={i}>
+                {e.wordType && <span className="font-bold mr-2">({e.wordType})</span>}
+                <span
+                  className="whitespace-pre-line text-base opacity-70"
+                  dangerouslySetInnerHTML={{ __html: e.descriptionHTML }}
+                />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   )
 }

@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Suspense, useMemo, useRef, useState } from "react"
 import { useAddWord, useDeleteWord, useWordsDB } from "../../api/queries"
 import { useScreenSize } from "../../lib/hooks"
-import { fetchWordInfoFromWeb } from "../../lib/dictionary/scraping"
+// Removed direct client-side scraping import to avoid CORS; use server API route instead
 import {
   APIError,
   NotFound,
@@ -14,7 +14,7 @@ import {
   DictEntryFromDB,
   DictEntryFromNet,
   WordsDataMap,
-} from "../../lib/dictionary/types"
+} from "../../lib/types"
 import { cn } from "../../lib/utils"
 import { Button } from "../../components/Button"
 import { SortDropdown } from "../../components/SortDropdown"
@@ -88,7 +88,15 @@ export default function Main({ cid }: { cid: CollectionID }) {
         const data = wordsData.get(currentWord)!
         return { ...data.dict_entry, type: "db", timeAdded: data.time_added, practiceData: data.practice_data } as DictEntryFromDB
       }
-      return await fetchWordInfoFromWeb(currentWord)
+      const res = await fetch(`/api/fetchWord?word=${encodeURIComponent(currentWord)}`)
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        return new APIError(json.message || res.status + ": " + res.statusText)
+      }
+      const json = await res.json()
+      if (json.kind === "notfound") return new NotFound(json.didYouMean, json.word)
+      if (json.kind === "error") return new APIError(json.message)
+      return json.entry as DictEntry
     },
     retry: 0,
   })

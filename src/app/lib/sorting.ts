@@ -1,4 +1,4 @@
-import { DictEntryFromDB } from "./dictionary/types";
+import { DictEntryFromDB } from "./types";
 
 export type SortKey = {
   name: string;

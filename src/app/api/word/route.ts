@@ -1,7 +1,7 @@
 import { sql } from "@vercel/postgres"
-import { DictEntryFromNet } from "@/app/lib/dictionary/types"
+import { DictEntryFromNet } from "@/app/lib/types"
 import { CollectionID } from "@/app/lib/collections"
-import { PracticeData } from "@/app/lib/dictionary/types"
+import { PracticeData } from "@/app/lib/types"
 
 async function insertWord(cid: CollectionID, word: string, dictEntry: DictEntryFromNet, timeString: string) {
   console.log("addWord ", timeString)

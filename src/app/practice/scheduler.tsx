@@ -1,12 +1,6 @@
-import { PracticeData } from "../lib/dictionary/types"
+import { PracticeData } from "../lib/types"
 
 export type AnswerData = "correct" | "wrong"
-
-export interface WordStats {
-  correctGuesses: number
-  totalGuesses: number
-  recentGuesses: boolean[] // last 5 guesses, true = correct
-}
 
 export interface Scheduler<ItemType> {
   itemList: ItemType[]

@@ -1,6 +1,6 @@
-import { DictEntry, DictEntryFromNet, PracticeData } from "../lib/dictionary/types"
+import { DictEntry, DictEntryFromNet, PracticeData } from "../lib/types"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { WordsDataMap, DictDBRow } from "../lib/dictionary/types"
+import { WordsDataMap, DictDBRow } from "../lib/types"
 import { Collection, CollectionID } from "@/app/lib/collections"
 
 async function addWord(cid: CollectionID, word: string, info: DictEntry, timeString: string) {
