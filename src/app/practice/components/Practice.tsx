@@ -6,24 +6,22 @@ import { useEffect, useMemo, useState } from "react"
 import { DictEntryFromDB, WordsDataMap, PracticeData } from "../../lib/types"
 import { AnswerData, ProbabilityScheduler, RandomScheduler, DEFAULT_SCHEDULER_CONFIG } from "../scheduler"
 import Link from "next/link"
-import { BarChart3, X } from "lucide-react"
+import { X } from "lucide-react"
+import { TopMenu } from "@/app/components/TopMenu"
 
 // Reusable navigation component
 function TopNavigation({ cid }: { cid: number }) {
   return (
-    <div className="fixed top-4 left-4 flex gap-2 z-50">
-      <Link href={`/practice/overview?cid=${cid}`}>
-        <Button className="flex items-center gap-2 bg-secondary hover:bg-primary text-gray-700 text-sm px-3 py-1 transition-colors">
-          <BarChart3 className="w-3 h-3" />
-          Overview
-        </Button>
-      </Link>
+    <div className="fixed top-4 left-4 right-4 flex gap-2 z-50 items-center">
       <Link href={`/collection?cid=${cid}`}>
         <Button className="flex items-center gap-2 bg-muted hover:bg-gray-300 text-gray-700 text-sm px-3 py-1 transition-colors">
           <X className="w-3 h-3" />
           Quit
         </Button>
       </Link>
+      <div className="ml-auto">
+        <TopMenu cid={cid} />
+      </div>
     </div>
   )
 }

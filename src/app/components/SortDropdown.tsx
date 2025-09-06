@@ -3,7 +3,8 @@ import {
   DndContext,
   DragEndEvent,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -19,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { GripVertical, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { useState, useRef, useEffect } from "react";
 import { SortKey } from "../lib/sorting";
 import { cn } from "../lib/utils";
@@ -46,16 +47,16 @@ function SortableItem({ sortKey, index, onToggleDirection }: {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-2 py-1 bg-white border border-gray-200 rounded text-sm whitespace-nowrap"
+  className="flex items-center gap-2 px-3 py-2 bg-light border border-border rounded text-sm whitespace-nowrap select-none touch-manipulation"
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600"
+  className="cursor-grab active:cursor-grabbing text-gray hover:text-gray-600 select-none touch-manipulation"
       >
-        <GripVertical size={14} />
+        <GripVertical size={18} />
       </div>
-      <span className="text-xs text-gray-500 w-4">{index + 1}</span>
+      <span className="text-gray w-2 mr-0.5">{index + 1}.</span>
       <span className="flex-1 min-w-0">{sortKey.name}</span>
       <div className="flex gap-1 flex-shrink-0">
         <button
@@ -109,7 +110,10 @@ export function SortDropdown({ sortKeys, setSortKeys }: {
   }, [displayPopup]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(MouseSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -137,16 +141,14 @@ export function SortDropdown({ sortKeys, setSortKeys }: {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        className={cn(
-          "rounded px-3 py-1 bg-primary transition text-center text-sm",
-          "hover:brightness-110 shadow-sm"
-        )}
+        className="rounded px-3 py-1 bg-primary transition text-center text-base hover:brightness-110 shadow-sm flex items-center gap-2"
         onClick={() => setDisplayPopup(!displayPopup)}
       >
-        {!displayPopup ? "Sort" : "Close"}
+        <ArrowUpDown size={13}></ArrowUpDown>
+        Sort
       </button>
       {displayPopup && (
-        <div className="absolute bg-white border border-gray-200 shadow-lg p-1 rounded top-9 left-0 flex flex-col gap-1 min-w-64 z-10">
+        <div className="absolute bg-light border border-border shadow-lg p-1 rounded top-9 left-0 flex flex-col gap-1 min-w-64 z-10">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}

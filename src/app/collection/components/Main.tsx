@@ -3,10 +3,10 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query"
 import { DateTime } from "luxon"
 import Link from "next/link"
-import { Suspense, useMemo, useRef, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useAddWord, useDeleteWord, useWordsDB } from "../../api/queries"
-import { useScreenSize } from "../../lib/hooks"
-// Removed direct client-side scraping import to avoid CORS; use server API route instead
+import { useScreenSize } from "../../lib/screenSizeHook"
+
 import {
   APIError,
   NotFound,
@@ -22,8 +22,16 @@ import { defaultSortKeys, sortEntries, SortKey } from "../../lib/sorting"
 import WordDataPage from "./DictEntryPage"
 import { MoveLeft, MoveRight } from "lucide-react"
 import { CollectionID } from "@/app/lib/collections"
+import { TopMenu } from "@/app/components/TopMenu"
+import { useResizableSplit } from "@/app/lib/resizeSplit"
 
 export default function Main({ cid }: { cid: CollectionID }) {
+  // Resizing bounds in percentages
+  const WORDLIST_MIN_SIZE_DESKTOP = 20 // %
+  const WORDLIST_MAX_SIZE_DESKTOP = 80 // %
+  const WORDLIST_MIN_SIZE_MOBILE  = 11 // % (height of word list)
+  const WORDLIST_MAX_SIZE_MOBILE  = 89 // %
+
   const history = useMemo(() => {
     class History {
       constructor(public history: string[] = [], public idx: number = -1) {}
@@ -79,6 +87,7 @@ export default function Main({ cid }: { cid: CollectionID }) {
   const deleteWordMutation = useDeleteWord(cid)
 
   const inputRef = useRef<HTMLInputElement>(null)
+  const didAutoSelect = useRef(false)
 
   const currentWordDataQuery = useSuspenseQuery<DictEntry | NotFound | APIError | null>({
     queryKey: ["word", currentWord, cid],
@@ -162,6 +171,41 @@ export default function Main({ cid }: { cid: CollectionID }) {
 
   const { width: screenWidth } = useScreenSize()
   const isMobile = screenWidth ? screenWidth < 700 : false
+  const desktop = useResizableSplit({
+    orientation: "vertical",
+    initialPercent: 40,
+    minPercent: WORDLIST_MIN_SIZE_DESKTOP,
+    maxPercent: WORDLIST_MAX_SIZE_DESKTOP,
+    active: !isMobile,
+  })
+  const mobile = useResizableSplit({
+    orientation: "horizontal",
+    initialPercent: 60,
+    minPercent: WORDLIST_MIN_SIZE_MOBILE,
+    maxPercent: WORDLIST_MAX_SIZE_MOBILE,
+    active: isMobile,
+  })
+
+  // Auto-select the most recently added word on first load
+  useEffect(() => {
+    if (didAutoSelect.current) return
+    if (!wordsData || wordsData.size === 0) return
+    // Find entry with max time_added
+    let latestWord: string | null = null
+    let latestTime = -Infinity
+    for (const [word, data] of wordsData.entries()) {
+      const t = new Date(data.time_added).getTime()
+      if (t > latestTime) {
+        latestTime = t
+        latestWord = word
+      }
+    }
+    if (latestWord) {
+      didAutoSelect.current = true
+      setInputText(latestWord)
+      updateCurrentWord(latestWord)
+    }
+  }, [wordsData])
 
   function search() {
     updateCurrentWord(inputText.toLowerCase().trim())
@@ -172,8 +216,12 @@ export default function Main({ cid }: { cid: CollectionID }) {
   return (
     <div className="h-full flex flex-col">
       <div
-        className={`grid sm:grid-cols-[2fr_3fr] sm:grid-rows-1 sm:divide-x-4 sm:divide-y-0 
-             grid-rows-[3fr_2fr] grid-cols-1 divide-y-reverse divide-y-4 divide-primary h-full overflow-auto`}
+        ref={(el) => {
+          desktop.setRef(el as HTMLDivElement | null)
+          mobile.setRef(el as HTMLDivElement | null)
+        }}
+  className={`grid sm:grid-rows-1 grid-rows-[3fr_2fr] grid-cols-1 h-full overflow-auto relative`}
+  style={isMobile ? mobile.containerStyle : desktop.containerStyle}
       >
         {/* Word list section */}
         <div className="p-2 sm:px-4 flex flex-col overflow-auto row-start-2 sm:row-start-auto relative">
@@ -183,18 +231,6 @@ export default function Main({ cid }: { cid: CollectionID }) {
             </h2>
             <div className="ml-3">
               <SortDropdown sortKeys={sortKeys} setSortKeys={setSortKeys} />
-            </div>
-            <div className="flex ml-auto gap-2">
-              <Link href={`/`}>
-                <Button className="bg-primary hover:bg-primary text-dark text-sm px-3 py-1 transition-colors">
-                  Home
-                </Button>
-              </Link>
-              <Link href={`/practice?cid=${cid}`}>
-                <Button className="bg-primary hover:bg-primary text-dark text-sm px-3 py-1 transition-colors">
-                  Practice
-                </Button>
-              </Link>
             </div>
           </div>
       <ul className="flex flex-wrap gap-2 overflow-y-auto sm:block sm:columns-[120px] sm:gap-x-3">
@@ -245,14 +281,21 @@ export default function Main({ cid }: { cid: CollectionID }) {
         </div>
 
         {/* Word info section */}
-        <div className="p-3 overflow-auto">
+        <div className="p-3 sm:px-5 overflow-auto">
           {currentWordData instanceof APIError ? (
             <h2 className="text-red-600 font-bold">
               API error: <span className="text-black font-normal">{currentWordData.message}</span>
             </h2>
           ) : (
             <Suspense fallback={<h2 className="text-3xl">Loading...</h2>}>
-              {currentWordData && <NavigationButtons />}
+              {currentWordData && (
+                <div className="flex mb-2 gap-1 sticky top-[-12px] bg-background items-center">
+                  <NavigationButtons />
+                  <div className="ml-auto">
+                    <TopMenu cid={cid} />
+                  </div>
+                </div>
+              )}
               <WordDataPage
                 setCurrentWord={(word) => {
                   setInputText(word)
@@ -264,13 +307,35 @@ export default function Main({ cid }: { cid: CollectionID }) {
             </Suspense>
           )}
         </div>
+
+        {/* Drag handles */}
+        {!isMobile && (
+          <div
+            className="hidden sm:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20"
+            style={desktop.dividerStyle}
+            onMouseDown={desktop.onDividerMouseDown}
+            onTouchStart={desktop.onDividerTouchStart}
+          >
+            <div className="w-[4px] h-full bg-primary mx-auto mr" />
+          </div>
+        )}
+        {isMobile && (
+          <div
+            className="block sm:hidden absolute left-0 right-0 h-3 cursor-row-resize z-20"
+            style={mobile.dividerStyle}
+            onMouseDown={mobile.onDividerMouseDown}
+            onTouchStart={mobile.onDividerTouchStart}
+          >
+            <div className="h-[4px] w-full bg-primary my-auto" />
+          </div>
+        )}
       </div>
     </div>
   )
 
   function NavigationButtons() {
     return (
-      <div className="flex mb-2 gap-1 sticky top-[-12px] bg-background">
+      <div className="flex gap-1">
         <Button
           className="bg-transparent whitespace-nowrap px-1 py-0.5 rounded-md text-sm transition hover:bg-neutral-300 disabled:hover:bg-transparent disabled:text-neutral-400 disabled:cursor-default"
           disabled={history.idx === 0}

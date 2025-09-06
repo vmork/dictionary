@@ -9,6 +9,7 @@ import { ProbabilityScheduler, DEFAULT_SCHEDULER_CONFIG } from "../scheduler"
 import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Target, TrendingUp, Clock, Award, RotateCcw } from "lucide-react"
 import { cn } from "@/app/lib/utils"
+import { TopMenu } from "@/app/components/TopMenu"
 import { useQueryClient } from "@tanstack/react-query"
 
 function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; cid: number }) {
@@ -23,8 +24,8 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
     return map
   }, [wordsData])
 
-  const scheduler = useMemo(() => 
-    new ProbabilityScheduler(Array.from(wordsData.keys()), practiceDataMap, DEFAULT_SCHEDULER_CONFIG), 
+  const scheduler = useMemo(
+    () => new ProbabilityScheduler(Array.from(wordsData.keys()), practiceDataMap, DEFAULT_SCHEDULER_CONFIG),
     [wordsData, practiceDataMap]
   )
 
@@ -32,33 +33,44 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
 
   const stats = useMemo(() => {
     const total = wordAnalysis.length
-    const practiced = wordAnalysis.filter(w => w.attempts > 0).length
-    const struggling = wordAnalysis.filter(w => w.category === 'struggling').length
-    const mastered = wordAnalysis.filter(w => w.category === 'mastered').length
-    const averageAccuracy = practiced > 0 
-      ? Math.round(wordAnalysis.filter(w => w.attempts > 0).reduce((sum, w) => sum + w.accuracy, 0) / practiced)
-      : 0
+    const practiced = wordAnalysis.filter((w) => w.attempts > 0).length
+    const struggling = wordAnalysis.filter((w) => w.category === "struggling").length
+    const mastered = wordAnalysis.filter((w) => w.category === "mastered").length
+    const averageAccuracy =
+      practiced > 0
+        ? Math.round(wordAnalysis.filter((w) => w.attempts > 0).reduce((sum, w) => sum + w.accuracy, 0) / practiced)
+        : 0
 
     return { total, practiced, struggling, mastered, averageAccuracy }
   }, [wordAnalysis])
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'struggling': return 'text-red-700 bg-red-50 border-red-200'
-      case 'recent_mistake': return 'text-orange-700 bg-orange-50 border-orange-200'
-      case 'mastered': return 'text-green-700 bg-green-50 border-green-200'
-      case 'new': return 'text-blue-700 bg-blue-50 border-blue-200'
-      default: return 'text-gray-700 bg-gray-50 border-gray-200'
+      case "struggling":
+        return "text-red-700 bg-red-50 border-red-200"
+      case "recent_mistake":
+        return "text-orange-700 bg-orange-50 border-orange-200"
+      case "mastered":
+        return "text-green-700 bg-green-50 border-green-200"
+      case "new":
+        return "text-blue-700 bg-blue-50 border-blue-200"
+      default:
+        return "text-gray-700 bg-gray-50 border-gray-200"
     }
   }
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'struggling': return <Target className="w-4 h-4" />
-      case 'recent_mistake': return <TrendingUp className="w-4 h-4" />
-      case 'mastered': return <Award className="w-4 h-4" />
-      case 'new': return <Clock className="w-4 h-4" />
-      default: return null
+      case "struggling":
+        return <Target className="w-4 h-4" />
+      case "recent_mistake":
+        return <TrendingUp className="w-4 h-4" />
+      case "mastered":
+        return <Award className="w-4 h-4" />
+      case "new":
+        return <Clock className="w-4 h-4" />
+      default:
+        return null
     }
   }
 
@@ -72,7 +84,7 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
         onError: (error) => {
           console.error("Failed to reset practice data:", error)
           alert("Failed to reset practice data. Please try again.")
-        }
+        },
       })
     }
   }
@@ -80,22 +92,21 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
   return (
     <div className="max-w-6xl mx-auto p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <Link href={`/practice?cid=${cid}`}>
-          <Button className="flex items-center gap-2 bg-secondary hover:bg-primary text-gray-700 transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Practice
+      <div className="flex items-center mb-4">
+        <div className="ml-2">
+          <Button
+            onClick={handleResetPracticeData}
+            disabled={resetAllPracticeDataMutation.isPending}
+            className="flex p-1.5 items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+            {resetAllPracticeDataMutation.isPending ? "Resetting..." : "Reset Practice Data"}
           </Button>
-        </Link>
-        
-        <Button 
-          onClick={handleResetPracticeData}
-          disabled={resetAllPracticeDataMutation.isPending}
-          className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
-        >
-          <RotateCcw className="w-4 h-4" />
-          {resetAllPracticeDataMutation.isPending ? "Resetting..." : "Reset Practice Data"}
-        </Button>
+        </div>
+        <div className="ml-auto">
+          {/* Reuse the same menu in the overview page */}
+          <TopMenu cid={cid} />
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -140,12 +151,23 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
               {wordAnalysis.map((word, index) => {
                 const practiceData = practiceDataMap.get(word.word)
                 return (
-                  <tr key={word.word} className={cn("border-b border-border hover:bg-muted/30", index % 2 === 0 ? "bg-white" : "bg-gray-25")}>
+                  <tr
+                    key={word.word}
+                    className={cn(
+                      "border-b border-border hover:bg-muted/30",
+                      index % 2 === 0 ? "bg-white" : "bg-gray-25"
+                    )}
+                  >
                     <td className="p-3">{word.word}</td>
                     <td className="p-3">
-                      <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border", getCategoryColor(word.category))}>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border",
+                          getCategoryColor(word.category)
+                        )}
+                      >
                         {getCategoryIcon(word.category)}
-                        {word.category.replace('_', ' ')}
+                        {word.category.replace("_", " ")}
                       </span>
                     </td>
                     <td className="p-3">
@@ -153,10 +175,16 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
                     </td>
                     <td className="p-3">
                       {word.attempts > 0 ? (
-                        <span className={cn("", 
-                          word.accuracy >= 80 ? "text-green-600" : 
-                          word.accuracy >= 60 ? "text-yellow-600" : "text-red-600"
-                        )}>
+                        <span
+                          className={cn(
+                            "",
+                            word.accuracy >= 80
+                              ? "text-green-600"
+                              : word.accuracy >= 60
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          )}
+                        >
                           {word.accuracy}%
                         </span>
                       ) : (
@@ -199,9 +227,11 @@ function PracticeOverviewContent() {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
   if (wordsDataQuery.isError) {
-    return <div className="flex items-center justify-center h-screen text-red-600">
-      Error loading data: {wordsDataQuery.error.message}
-    </div>
+    return (
+      <div className="flex items-center justify-center h-screen text-red-600">
+        Error loading data: {wordsDataQuery.error.message}
+      </div>
+    )
   }
 
   return <PracticeOverviewInner wordsData={wordsDataQuery.data} cid={cid} />

@@ -8,12 +8,12 @@ export type SortKey = {
 
 export const defaultSortKeys: SortKey[] = [
   {
-    name: "Word",
+    name: "Alphabetical",
     ascending: true,
     comparator: (a, b) => a.word.localeCompare(b.word),
   },
   {
-    name: "Time added",
+    name: "Date added",
     ascending: true,
     comparator: (a, b) => new Date(a.timeAdded).getTime() - new Date(b.timeAdded).getTime(),
   },
