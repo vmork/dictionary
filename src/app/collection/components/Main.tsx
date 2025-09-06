@@ -197,9 +197,9 @@ export default function Main({ cid }: { cid: CollectionID }) {
               </Link>
             </div>
           </div>
-          <ul className="flex flex-wrap gap-2 overflow-y-auto sm:grid sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))] sm:gap-x-5">
+      <ul className="flex flex-wrap gap-2 overflow-y-auto sm:block sm:columns-[120px] sm:gap-x-3">
             {wordList.map((word) => (
-              <li key={word} className="w-max">
+        <li key={word} className="w-max sm:w-full break-inside-avoid py-0.5">
                 <span
                   onClick={() => {
                     setInputText(word)

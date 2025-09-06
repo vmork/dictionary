@@ -161,7 +161,7 @@ export default function WordDataPage({
       </ul>
 
       {/* Etymology */}
-      {data.etymologies.length > 0 && (
+      {data.etymologies?.length > 0 && (
         <>
           <div className="flex items-center gap-2">
             <h3 className="text-xl my-2 underline">Etymology</h3>
