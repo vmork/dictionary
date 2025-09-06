@@ -47,15 +47,15 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "struggling":
-        return "text-red-700 bg-red-50 border-red-200"
+        return "text-dark bg-reddish border-dark"
       case "recent_mistake":
         return "text-orange-700 bg-orange-50 border-orange-200"
       case "mastered":
-        return "text-green-700 bg-green-50 border-green-200"
+        return "text-dark bg-greenish border-dark"
       case "new":
-        return "text-blue-700 bg-blue-50 border-blue-200"
+        return "text-blue-700 bg-blue-50 border-dark"
       default:
-        return "text-gray-700 bg-gray-50 border-gray-200"
+        return "text-gray-700 bg-gray-50 border-dark"
     }
   }
 
@@ -94,14 +94,14 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
       {/* Header */}
       <div className="flex items-center mb-4">
         <div className="ml-2">
-          <Button
+          <button
             onClick={handleResetPracticeData}
             disabled={resetAllPracticeDataMutation.isPending}
-            className="flex p-1.5 items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+            className="flex p-1.5 items-center gap-2 bg-red-100 hover:bg-reddish rounded-md text-red-700 transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
             {resetAllPracticeDataMutation.isPending ? "Resetting..." : "Reset Practice Data"}
-          </Button>
+          </button>
         </div>
         <div className="ml-auto">
           {/* Reuse the same menu in the overview page */}
@@ -179,7 +179,7 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
                           className={cn(
                             "",
                             word.accuracy >= 80
-                              ? "text-green-600"
+                              ? "text-greenish"
                               : word.accuracy >= 60
                               ? "text-yellow-600"
                               : "text-red-600"
@@ -198,7 +198,7 @@ function PracticeOverviewInner({ wordsData, cid }: { wordsData: WordsDataMap; ci
                           {practiceData.lastFive.map((correct, i) => (
                             <div
                               key={i}
-                              className={cn("w-3 h-3 rounded-full", correct ? "bg-green-400" : "bg-red-400")}
+                              className={cn("w-3 h-3 rounded-full", correct ? "bg-greenish" : "bg-red-400")}
                             />
                           ))}
                         </div>

@@ -17,7 +17,7 @@ export default function Home() {
         <div>Loading collections...</div>
       ) : (
         <div className="flex flex-col">
-          <h1 className="text-3xl">Collections:</h1>
+          <h1 className="text-3xl">Collections</h1>
           <ul className="mt-3">
             {collectionListQuery.data.map((collection) => (
               <li className="flex gap-5 items-center w-full" key={collection.id}>
@@ -29,7 +29,7 @@ export default function Home() {
             ))}
           </ul>
 
-          <Button className="mt-3 flex-none w-fit" onClick={() => setShowNewCollectionPrompt(true)}>
+          <Button className="mt-5 flex-none w-fit" onClick={() => setShowNewCollectionPrompt(true)}>
             Create new
           </Button>
         </div>

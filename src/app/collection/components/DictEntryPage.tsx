@@ -27,7 +27,7 @@ function PracticeStatsDisplay({ practiceData, timeAdded }: { practiceData: Pract
                   key={index}
                   className={cn(
                     "w-4 h-4 rounded-full flex items-center justify-center text-white",
-                    isCorrect ? "bg-green-500" : "bg-red-500"
+                    isCorrect ? "bg-greenish" : "bg-reddish"
                   )}
                 >
                   {isCorrect ? <Check className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}
@@ -101,7 +101,7 @@ export default function WordDataPage({
                 <Link
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:brightness-50 transition"
+                  className="hover:text-primary underline transition"
                   href={data.translationsSource?.href ?? "about:blank"}
                 >
                   ({data.translationsSource?.title})
@@ -128,7 +128,7 @@ export default function WordDataPage({
             <Link
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:brightness-50 transition"
+              className="hover:text-primary underline transition"
               href={data.definitionsSource?.href ?? "about:blank"}
             >
               ({data.definitionsSource?.title})
@@ -148,7 +148,7 @@ export default function WordDataPage({
                   key={s}
                   className={cn(
                     "bg-neutral-200 whitespace-nowrap px-1 py-0.5 rounded-md text-sm sm:hover:brightness-90",
-                    wordSet.has(s) && "bg-primary"
+                    wordSet.has(s) && "bg-greenish"
                   )}
                   onClick={() => setCurrentWord(s)}
                 >
@@ -170,7 +170,7 @@ export default function WordDataPage({
                 <Link
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:brightness-50 transition"
+                  className="hover:text-primary underline transition"
                   href={data.etymologySource?.href ?? "about:blank"}
                 >
                   ({data.etymologySource?.title})

@@ -268,7 +268,7 @@ export default function Main({ cid }: { cid: CollectionID }) {
                 Search
               </Button>
             ) : searchAddDeleteState === "delete" ? (
-              <Button className={"bg-red-300"} onClick={() => dbDeleteWord(currentWord)}>Delete</Button>
+              <Button className={"bg-reddish"} onClick={() => dbDeleteWord(currentWord)}>Delete</Button>
             ) : (
               <Button
                 onClick={() => dbAddWord(currentWord, currentWordData as DictEntry)}

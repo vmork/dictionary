@@ -14,8 +14,8 @@ function TopNavigation({ cid }: { cid: number }) {
   return (
     <div className="fixed top-4 left-4 right-4 flex gap-2 z-50 items-center">
       <Link href={`/collection?cid=${cid}`}>
-        <Button className="flex items-center gap-2 bg-muted hover:bg-gray-300 text-gray-700 text-sm px-3 py-1 transition-colors">
-          <X className="w-3 h-3" />
+        <Button className="flex items-center gap-1 bg-primary hover:bg-gray-300 text-gray-700 py-1 px-3 transition-colors">
+          <X size={16} />
           Quit
         </Button>
       </Link>
@@ -108,10 +108,10 @@ function PracticeInner({ wordsData, cid }: { wordsData: WordsDataMap; cid: numbe
           <WordDataPage data={currentWordData} wordSet={wordSet} setCurrentWord={() => null}></WordDataPage>
         </div>
         <div className="pt-4 mb-10 flex gap-2 h-[50px] flex-none">
-          <Button className="bg-rose-300 flex-none h-max" onClick={() => onAnswer("wrong")}>
+          <Button className="bg-reddish flex-none h-max" onClick={() => onAnswer("wrong")}>
             Wrong
           </Button>
-          <Button className="bg-primary flex-none h-max" onClick={() => onAnswer("correct")}>
+          <Button className="bg-greenish flex-none h-max" onClick={() => onAnswer("correct")}>
             Correct
           </Button>
         </div>
