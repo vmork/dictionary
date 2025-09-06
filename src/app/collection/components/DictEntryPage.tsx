@@ -92,9 +92,23 @@ export default function WordDataPage({
       {data.type === "db" && <PracticeStatsDisplay practiceData={data.practiceData} timeAdded={data.timeAdded} />}
 
       {/* Translations */}
-      {data.translations.length != 0 && (
+      {data.translations.length > 0 && (
         <>
-          <h3 className="text-xl my-2 underline">Translations</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl my-2 underline">Translations</h3>
+            <span className="text-sm text-neutral-400">
+              {data.translationsSource && (
+                <Link
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:brightness-50 transition"
+                  href={data.translationsSource?.href ?? "about:blank"}
+                >
+                  ({data.translationsSource?.title})
+                </Link>
+              )}
+            </span>
+          </div>
           <ul className="flex flex-wrap gap-1 pb-2">
             {data.translations.map((t, i) => (
               <li className="bg-neutral-200 whitespace-nowrap px-1 py-0.5 rounded-md text-sm" key={i}>
@@ -147,9 +161,23 @@ export default function WordDataPage({
       </ul>
 
       {/* Etymology */}
-      {data.etymologies && (
+      {data.etymologies.length > 0 && (
         <>
-          <h3 className="text-xl my-2 underline">Etymology</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl my-2 underline">Etymology</h3>
+            <span className="text-sm text-neutral-400">
+              {data.etymologySource && (
+                <Link
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:brightness-50 transition"
+                  href={data.etymologySource?.href ?? "about:blank"}
+                >
+                  ({data.etymologySource?.title})
+                </Link>
+              )}
+            </span>
+          </div>
           <ul className="space-y-3 max-w-[800px]">
             {data.etymologies.map((e, i) => (
               <li key={i}>

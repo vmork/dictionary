@@ -122,13 +122,89 @@ async function fetchTranslations(word: string): Promise<TranslationsResult> {
   const html = await res.text()
   const root = parse(html)
 
-  const words = root
-    .querySelectorAll("table.WRD td.ToWrd")
-    .filter((td) => !td.querySelector("span.ph"))
-    .map((td) => td.childNodes.find((n: any) => n.nodeType === 3)?.rawText?.trim())
-    .filter(Boolean) as string[]
-  
-  console.log("translations", words)
+  // Helper: case-insensitive class check
+  const hasClassCI = (el: any, cls: string) =>
+    ((el?.getAttribute?.("class") as string) || "")
+      .split(/\s+/)
+      .some((c) => c.toLowerCase() === cls.toLowerCase())
+
+  // Find the first WRD table reliably, even if markup is malformed
+  const article = root.querySelector("#articleWRD")
+  let firstWRDTable = article?.querySelector("table")
+
+  // Collect all ToWrd cells, but only those that belong to the first WRD table
+  const allTDs = root.querySelectorAll("td") as any[]
+  const toWrdTDs = allTDs.filter((td: any) => hasClassCI(td, "ToWrd"))
+
+  const getAncestorTable = (el: any) => {
+    let p = el?.parentNode
+    while (p && (p as any).tagName !== "TABLE") p = p.parentNode
+    return p
+  }
+
+  // If we couldn't detect the first WRD table explicitly, infer it from the first ToWrd cell's table
+  if (!firstWRDTable && toWrdTDs.length) firstWRDTable = getAncestorTable(toWrdTDs[0])
+
+  const inFirstTable = toWrdTDs // TODO
+
+  // Build clean word list: remove POS markers, split on common delimiters, trim, dedupe
+  const rawPieces: string[] = []
+  for (const td of inFirstTable) {
+    // Skip placeholder/header cells
+    if (td.querySelector("span.ph")) continue
+
+    // Construct text while skipping POS markers like <em class="POS2">s</em>
+    const pieces: string[] = []
+    for (const n of td.childNodes as any[]) {
+      if (n.nodeType === 3) {
+        pieces.push((n.rawText || "").trim())
+      } else if ((n as any).tagName === "EM" && hasClassCI(n, "POS2")) {
+        // drop POS abbreviation
+      } else {
+        pieces.push(((n as any).text || "").trim())
+      }
+    }
+    // Remove parenthetical glosses like (vard.) or (fig.)
+    const txt = pieces
+      .join(" ")
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+    if (txt) rawPieces.push(txt)
+  }
+
+  const splitAndClean = (s: string) =>
+    s
+      // split on commas, slashes, middots, semicolons, and explicit " or/eller "
+      .split(/[,\/•·;]|\s+(?:eller|or)\s+/g)
+      .map((x) => x.replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+
+  const blacklist = new Set([
+    "adj",
+    "adv",
+    "s",
+    "n",
+    "v",
+    "vtr",
+    "vi",
+    "uttr",
+    "pl",
+    "sing",
+    "abbr",
+    "svenska",
+  ])
+
+  const words: string[] = []
+  for (const chunk of rawPieces) {
+    for (const w of splitAndClean(chunk)) {
+      const normalized = w.trim()
+      if (!normalized) continue
+      if (blacklist.has(normalized.toLowerCase())) continue
+      // Keep order, dedupe
+      if (!words.includes(normalized)) words.push(normalized)
+    }
+  }
 
   return {
     translations: words.map((w) => ({ language: "swedish", word: w })),
