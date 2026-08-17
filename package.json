@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:vps": "bash deploy/scripts/dev-vps-clone.sh",
+    "dev:account": "tsx src/app/scripts/prepareDevelopmentAccount.ts",
     "build": "next build",
     "db:migrate": "tsx src/app/scripts/migrate.ts",
     "start": "next start",

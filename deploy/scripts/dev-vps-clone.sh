@@ -3,6 +3,18 @@ set -euo pipefail
 
 dictionary_ssh_host="${DICTIONARY_VPS_SSH_HOST:-hetzner-helsinki}"
 dictionary_tunnel_port="${DICTIONARY_VPS_DB_PORT:-55432}"
+dictionary_prepare_only=false
+
+for dictionary_argument in "$@"; do
+  case "$dictionary_argument" in
+    --) ;;
+    --prepare-only) dictionary_prepare_only=true ;;
+    *)
+      echo "Unknown option: $dictionary_argument" >&2
+      exit 1
+      ;;
+  esac
+done
 
 if ! [[ "$dictionary_tunnel_port" =~ ^[0-9]+$ ]] || (( dictionary_tunnel_port < 1024 || dictionary_tunnel_port > 65535 )); then
   echo "DICTIONARY_VPS_DB_PORT must be a number between 1024 and 65535" >&2
@@ -30,6 +42,10 @@ export AUTH_DATABASE_POOL_SIZE=5
 export BETTER_AUTH_URL=http://localhost:3000
 export BETTER_AUTH_SECRET="${BETTER_AUTH_LOCAL_SECRET:-$(openssl rand -base64 32)}"
 export BETTER_AUTH_SECURE_COOKIES=false
+export DICTIONARY_ENABLE_DEV_ACCOUNT=1
+export DICTIONARY_DEV_EMAIL="${DICTIONARY_DEV_EMAIL:-codex-dev@dictionary.invalid}"
+export DICTIONARY_DEV_NAME="${DICTIONARY_DEV_NAME:-Codex development}"
+export DICTIONARY_DEV_PASSWORD="${DICTIONARY_DEV_PASSWORD:-$(openssl rand -hex 18)}"
 
 ssh -N \
   -o ExitOnForwardFailure=yes \
@@ -61,4 +77,13 @@ fi
 
 echo "Using the isolated VPS development database through an SSH tunnel."
 echo "Changes made in this session do not affect production."
+pnpm exec tsx src/app/scripts/prepareDevelopmentAccount.ts
+echo "Development sign-in:"
+echo "  Email: $DICTIONARY_DEV_EMAIL"
+echo "  Password: $DICTIONARY_DEV_PASSWORD"
+
+if [[ "$dictionary_prepare_only" == true ]]; then
+  exit 0
+fi
+
 pnpm dev

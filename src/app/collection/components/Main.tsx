@@ -29,8 +29,8 @@ export default function Main({ cid }: { cid: CollectionID }) {
   // Resizing bounds in percentages
   const WORDLIST_MIN_SIZE_DESKTOP = 20 // %
   const WORDLIST_MAX_SIZE_DESKTOP = 80 // %
-  const WORDLIST_MIN_SIZE_MOBILE  = 11 // % (height of word list)
-  const WORDLIST_MAX_SIZE_MOBILE  = 89 // %
+  const MAIN_CONTENT_MIN_SIZE_MOBILE = 20 // % (word list uses the remaining height)
+  const MAIN_CONTENT_MAX_SIZE_MOBILE = 80 // %
 
   const history = useMemo(() => {
     class History {
@@ -170,7 +170,8 @@ export default function Main({ cid }: { cid: CollectionID }) {
   }
 
   const { width: screenWidth } = useScreenSize()
-  const isMobile = screenWidth ? screenWidth < 700 : false
+  // Keep this aligned with the custom `sm` breakpoint in tailwind.config.ts.
+  const isMobile = screenWidth ? screenWidth < 768 : false
   const desktop = useResizableSplit({
     orientation: "vertical",
     initialPercent: 40,
@@ -181,8 +182,8 @@ export default function Main({ cid }: { cid: CollectionID }) {
   const mobile = useResizableSplit({
     orientation: "horizontal",
     initialPercent: 60,
-    minPercent: WORDLIST_MIN_SIZE_MOBILE,
-    maxPercent: WORDLIST_MAX_SIZE_MOBILE,
+    minPercent: MAIN_CONTENT_MIN_SIZE_MOBILE,
+    maxPercent: MAIN_CONTENT_MAX_SIZE_MOBILE,
     active: isMobile,
   })
 
@@ -220,8 +221,8 @@ export default function Main({ cid }: { cid: CollectionID }) {
           desktop.setRef(el as HTMLDivElement | null)
           mobile.setRef(el as HTMLDivElement | null)
         }}
-  className={`grid sm:grid-rows-1 grid-rows-[3fr_2fr] grid-cols-1 h-full overflow-auto relative`}
-  style={isMobile ? mobile.containerStyle : desktop.containerStyle}
+        className="relative grid h-full grid-cols-1 grid-rows-[3fr_2fr] overflow-hidden sm:grid-rows-1"
+        style={isMobile ? mobile.containerStyle : desktop.containerStyle}
       >
         {/* Word list section */}
         <div className="p-2 sm:px-4 flex flex-col overflow-auto row-start-2 sm:row-start-auto relative">
@@ -311,22 +312,46 @@ export default function Main({ cid }: { cid: CollectionID }) {
         {/* Drag handles */}
         {!isMobile && (
           <div
-            className="hidden sm:block absolute top-0 bottom-0 w-3 cursor-col-resize z-20"
+            role="separator"
+            aria-label="Resize word list and definition"
+            aria-orientation="vertical"
+            aria-valuemin={WORDLIST_MIN_SIZE_DESKTOP}
+            aria-valuemax={WORDLIST_MAX_SIZE_DESKTOP}
+            aria-valuenow={Math.round(desktop.primaryPercent)}
+            tabIndex={0}
+            className="group absolute inset-y-0 z-20 hidden w-5 -translate-x-1/2 touch-none select-none cursor-col-resize items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:flex"
             style={desktop.dividerStyle}
-            onMouseDown={desktop.onDividerMouseDown}
-            onTouchStart={desktop.onDividerTouchStart}
+            onPointerDown={desktop.onDividerPointerDown}
+            onPointerMove={desktop.onDividerPointerMove}
+            onPointerUp={desktop.onDividerPointerEnd}
+            onPointerCancel={desktop.onDividerPointerEnd}
+            onLostPointerCapture={desktop.onDividerPointerEnd}
+            onKeyDown={desktop.onDividerKeyDown}
           >
-            <div className="w-[4px] h-full bg-primary mx-auto mr" />
+            <div className="pointer-events-none h-full w-1 bg-primary transition-colors group-hover:brightness-90" />
           </div>
         )}
         {isMobile && (
           <div
-            className="block sm:hidden absolute left-0 right-0 h-3 cursor-row-resize z-20"
+            role="separator"
+            aria-label="Resize definition and word list"
+            aria-orientation="horizontal"
+            aria-valuemin={MAIN_CONTENT_MIN_SIZE_MOBILE}
+            aria-valuemax={MAIN_CONTENT_MAX_SIZE_MOBILE}
+            aria-valuenow={Math.round(mobile.primaryPercent)}
+            tabIndex={0}
+            className="group absolute inset-x-0 z-20 flex h-11 -translate-y-1/2 touch-none select-none cursor-row-resize items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:hidden"
             style={mobile.dividerStyle}
-            onMouseDown={mobile.onDividerMouseDown}
-            onTouchStart={mobile.onDividerTouchStart}
+            onPointerDown={mobile.onDividerPointerDown}
+            onPointerMove={mobile.onDividerPointerMove}
+            onPointerUp={mobile.onDividerPointerEnd}
+            onPointerCancel={mobile.onDividerPointerEnd}
+            onLostPointerCapture={mobile.onDividerPointerEnd}
+            onKeyDown={mobile.onDividerKeyDown}
           >
-            <div className="h-[4px] w-full bg-primary my-auto" />
+            <div className="pointer-events-none relative h-px w-full bg-primary/60">
+              <div className="absolute left-1/2 top-1/2 h-1.5 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-sm transition-transform group-active:scale-x-110" />
+            </div>
           </div>
         )}
       </div>

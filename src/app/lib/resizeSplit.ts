@@ -12,6 +12,19 @@ type Options = {
   active?: boolean
 }
 
+type DragState = {
+  pointerId: number
+  start: number
+  total: number
+  grabOffset: number
+}
+
+function clampPercent(value: number, minPercent: number, maxPercent: number) {
+  const min = Math.max(0, Math.min(100, minPercent))
+  const max = Math.max(min, Math.min(100, maxPercent))
+  return Math.max(min, Math.min(value, max))
+}
+
 export function useResizableSplit({
   orientation,
   initialPercent = 40,
@@ -20,91 +33,116 @@ export function useResizableSplit({
   active = true,
 }: Options) {
   const gridRef = useRef<HTMLDivElement>(null)
-  const [primaryPx, setPrimaryPx] = useState<number>(0)
+  const dragRef = useRef<DragState | null>(null)
+  const previousBodyStyles = useRef<{ cursor: string; userSelect: string } | null>(null)
+  const [primaryPercent, setPrimaryPercent] = useState(() =>
+    clampPercent(initialPercent, minPercent, maxPercent)
+  )
 
-  // Ensure bounds on mount/orientation change/window resize
-  useEffect(() => {
-    if (!gridRef.current || !active) return
-    const ensureBounds = () => {
-      const rect = gridRef.current!.getBoundingClientRect()
-      const total = orientation === "vertical" ? rect.width : rect.height
-      const minPx = (Math.max(0, Math.min(100, minPercent)) / 100) * total
-      const maxPx = (Math.max(0, Math.min(100, maxPercent)) / 100) * total
-      // If size not set yet (0), initialize from initialPercent
-      setPrimaryPx((prev) => {
-        const initialPx = (Math.max(0, Math.min(100, initialPercent)) / 100) * total
-        const base = prev > 0 ? prev : initialPx
-        return Math.max(minPx, Math.min(base, maxPx))
-      })
+  const boundedPrimaryPercent = clampPercent(primaryPercent, minPercent, maxPercent)
+
+  const setRef = useCallback((element: HTMLDivElement | null) => {
+    gridRef.current = element
+  }, [])
+
+  const positionForEvent = (event: React.PointerEvent<HTMLDivElement>) =>
+    orientation === "vertical" ? event.clientX : event.clientY
+
+  function finishDrag(element?: HTMLDivElement, pointerId?: number) {
+    const drag = dragRef.current
+    if (!drag || (pointerId !== undefined && drag.pointerId !== pointerId)) return
+
+    if (element?.hasPointerCapture(drag.pointerId)) {
+      element.releasePointerCapture(drag.pointerId)
     }
-    ensureBounds()
-    window.addEventListener("resize", ensureBounds)
-    return () => window.removeEventListener("resize", ensureBounds)
-  }, [active, minPercent, maxPercent, initialPercent, orientation])
+    dragRef.current = null
 
-  function startDrag(pos: number) {
-    if (!gridRef.current || !active) return
-  const rect = gridRef.current.getBoundingClientRect()
+    if (previousBodyStyles.current) {
+      document.body.style.cursor = previousBodyStyles.current.cursor
+      document.body.style.userSelect = previousBodyStyles.current.userSelect
+      previousBodyStyles.current = null
+    }
+  }
+
+  useEffect(() => () => finishDrag(), [])
+
+  function onDividerPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (!gridRef.current || !active || (event.pointerType === "mouse" && event.button !== 0)) return
+
+    event.preventDefault()
+    const rect = gridRef.current.getBoundingClientRect()
     const start = orientation === "vertical" ? rect.left : rect.top
+    const total = orientation === "vertical" ? rect.width : rect.height
+    if (total <= 0) return
 
-    const onMove = (p: number) => {
-  const total = orientation === "vertical" ? rect.width : rect.height
-  let newSize = p - start
-  const minPx = (Math.max(0, Math.min(100, minPercent)) / 100) * total
-  const maxPx = (Math.max(0, Math.min(100, maxPercent)) / 100) * total
-  newSize = Math.max(minPx, Math.min(newSize, maxPx))
-  setPrimaryPx(newSize)
+    const position = positionForEvent(event)
+    const dividerPosition = start + (boundedPrimaryPercent / 100) * total
+    dragRef.current = {
+      pointerId: event.pointerId,
+      start,
+      total,
+      grabOffset: position - dividerPosition,
     }
-    onMove(pos)
 
-    const handleMouseMove = (e: MouseEvent) => onMove(orientation === "vertical" ? e.clientX : e.clientY)
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches[0]) onMove(orientation === "vertical" ? e.touches[0].clientX : e.touches[0].clientY)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    previousBodyStyles.current = {
+      cursor: document.body.style.cursor,
+      userSelect: document.body.style.userSelect,
     }
-    const end = () => {
-      document.body.style.userSelect = ""
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("mouseup", end)
-      window.removeEventListener("touchmove", handleTouchMove)
-      window.removeEventListener("touchend", end)
-    }
+    document.body.style.cursor = orientation === "vertical" ? "col-resize" : "row-resize"
     document.body.style.userSelect = "none"
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("mouseup", end)
-    window.addEventListener("touchmove", handleTouchMove, { passive: false })
-    window.addEventListener("touchend", end)
   }
 
-  function onDividerMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    e.preventDefault()
-    startDrag(orientation === "vertical" ? e.clientX : e.clientY)
+  function onDividerPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    event.preventDefault()
+    const size = positionForEvent(event) - drag.start - drag.grabOffset
+    setPrimaryPercent(clampPercent((size / drag.total) * 100, minPercent, maxPercent))
   }
-  function onDividerTouchStart(e: React.TouchEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const t = e.touches[0]
-    if (t) startDrag(orientation === "vertical" ? t.clientX : t.clientY)
+
+  function onDividerPointerEnd(event: React.PointerEvent<HTMLDivElement>) {
+    finishDrag(event.currentTarget, event.pointerId)
+  }
+
+  function onDividerKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const decreaseKey = orientation === "vertical" ? "ArrowLeft" : "ArrowUp"
+    const increaseKey = orientation === "vertical" ? "ArrowRight" : "ArrowDown"
+    const step = event.shiftKey ? 10 : 4
+
+    if (event.key === decreaseKey || event.key === increaseKey) {
+      event.preventDefault()
+      const direction = event.key === decreaseKey ? -1 : 1
+      setPrimaryPercent((current) => clampPercent(current + direction * step, minPercent, maxPercent))
+    } else if (event.key === "Home") {
+      event.preventDefault()
+      setPrimaryPercent(clampPercent(minPercent, minPercent, maxPercent))
+    } else if (event.key === "End") {
+      event.preventDefault()
+      setPrimaryPercent(clampPercent(maxPercent, minPercent, maxPercent))
+    }
   }
 
   const containerStyle = active
-    ? (orientation === "vertical"
-        ? ({ gridTemplateColumns: `${primaryPx}px 1fr` } as React.CSSProperties)
-        : ({ gridTemplateRows: `${primaryPx}px 1fr` } as React.CSSProperties))
+    ? orientation === "vertical"
+      ? ({ gridTemplateColumns: `${boundedPrimaryPercent}% minmax(0, 1fr)` } as React.CSSProperties)
+      : ({ gridTemplateRows: `${boundedPrimaryPercent}% minmax(0, 1fr)` } as React.CSSProperties)
     : undefined
 
   const dividerStyle = orientation === "vertical"
-    ? ({ left: primaryPx - 0.5 } as React.CSSProperties)
-    : ({ top: primaryPx - 0.5 } as React.CSSProperties)
-
-  const setRef = useCallback((el: HTMLDivElement | null) => {
-    (gridRef as any).current = el
-  }, [])
+    ? ({ left: `${boundedPrimaryPercent}%` } as React.CSSProperties)
+    : ({ top: `${boundedPrimaryPercent}%` } as React.CSSProperties)
 
   return {
     gridRef,
     setRef,
     containerStyle,
     dividerStyle,
-    onDividerMouseDown,
-    onDividerTouchStart,
+    primaryPercent: boundedPrimaryPercent,
+    onDividerPointerDown,
+    onDividerPointerMove,
+    onDividerPointerEnd,
+    onDividerKeyDown,
   }
 }

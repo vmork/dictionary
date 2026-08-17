@@ -8,10 +8,17 @@ A Next.js dictionary and practice app backed by PostgreSQL.
 2. Install dependencies with `pnpm install --frozen-lockfile`.
 3. Start the app with `pnpm dev`.
 
-To test against an isolated clone of the VPS data and sign in with the same
-owner credentials, run `pnpm dev:vps` instead. It opens an SSH-only PostgreSQL
-tunnel using the `hetzner-helsinki` SSH host, targets the non-production
-`dictionary_local_dev` database, and closes the tunnel when Next stops.
+To test against an isolated clone of the VPS data, run `pnpm dev:vps` instead.
+It opens an SSH-only PostgreSQL tunnel using the `hetzner-helsinki` SSH host,
+targets the non-production `dictionary_local_dev` database, and closes the
+tunnel when Next stops.
+
+The command prepares `codex-dev@dictionary.invalid` in that clone and prints a
+new password for the current run. It assigns the cloned owner's collections to
+the development account when needed, removes copied production credentials and
+sessions, and never changes the production database. Set
+`DICTIONARY_DEV_EMAIL`, `DICTIONARY_DEV_NAME`, or `DICTIONARY_DEV_PASSWORD`
+before running the command if you want explicit development credentials.
 
 The application uses a standard `DATABASE_URL`; it is not tied to Vercel or a
 specific PostgreSQL provider. Merriam-Webster credentials are server-only and
