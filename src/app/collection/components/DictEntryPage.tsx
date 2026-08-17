@@ -3,6 +3,7 @@ import { Button } from "../../components/Button"
 import Link from "next/link"
 import { cn, formatDateString } from "../../lib/utils"
 import { Check, X } from "lucide-react"
+import EtymologyTree from "./EtymologyTree"
 
 function PracticeStatsDisplay({ practiceData, timeAdded }: { practiceData: PracticeData; timeAdded: string }) {
   const recallPercentage =
@@ -161,7 +162,7 @@ export default function WordDataPage({
       </ul>
 
       {/* Etymology */}
-      {data.etymologies?.length > 0 && (
+      {(data.etymologies?.length > 0 || (data.etymologyTrees?.length ?? 0) > 0) && (
         <>
           <div className="flex items-center gap-2">
             <h3 className="text-xl my-2 underline">Etymology</h3>
@@ -178,17 +179,25 @@ export default function WordDataPage({
               )}
             </span>
           </div>
-          <ul className="space-y-3 max-w-[800px]">
-            {data.etymologies.map((e, i) => (
-              <li key={i}>
-                {e.wordType && <span className="font-bold mr-2">({e.wordType})</span>}
-                <span
-                  className="whitespace-pre-line text-base opacity-70"
-                  dangerouslySetInnerHTML={{ __html: e.descriptionHTML }}
-                />
-              </li>
-            ))}
-          </ul>
+          <EtymologyTree
+            key={data.word}
+            word={data.word}
+            trees={data.etymologyTrees}
+            source={data.etymologyTreeSource}
+          />
+          {data.etymologies?.length > 0 && (
+            <ul className="space-y-3 max-w-[800px]">
+              {data.etymologies.map((e, i) => (
+                <li key={i}>
+                  {e.wordType && <span className="font-bold mr-2">({e.wordType})</span>}
+                  <span
+                    className="whitespace-pre-line text-base opacity-70"
+                    dangerouslySetInnerHTML={{ __html: e.descriptionHTML }}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       )}
     </div>

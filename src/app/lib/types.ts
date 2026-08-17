@@ -29,14 +29,34 @@ export type Etymology = {
   descriptionHTML: string
 }
 
+export type EtymologyRelation = "borrowed" | "inherited" | "derived" | "formed"
+
+export type EtymologyTreeNode = {
+  word: string
+  language: string
+  languageCode: string
+  gloss?: string
+  romanization?: string
+  relationToChild?: EtymologyRelation
+  uncertain?: boolean
+  parents: EtymologyTreeNode[]
+}
+
+export type EtymologyTree = {
+  partOfSpeech?: string
+  root: EtymologyTreeNode
+}
+
 type _DictEntry = {
   word: string
   definitions: Definition[]
   translations: Translation[]
   etymologies: Etymology[]
+  etymologyTrees?: EtymologyTree[]
   definitionsSource: LinkWithTitle
   translationsSource: LinkWithTitle
   etymologySource: LinkWithTitle
+  etymologyTreeSource?: LinkWithTitle
   type: "net" | "db"
 }
 

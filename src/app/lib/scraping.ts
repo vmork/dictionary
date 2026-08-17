@@ -1,5 +1,6 @@
 import { parse } from "node-html-parser"
 import { Definition, Translation, Etymology, NotFound, APIError, DictEntryFromNet, LinkWithTitle } from "./types"
+import { fetchEtymologyTrees, getEtymologyTreeSource } from "./etymologyTree"
 
 // Wrapper result types used only at fetch stage
 export type DefinitionsResult = { definitions: Definition[]; source: LinkWithTitle }
@@ -265,16 +266,21 @@ export async function fetchWordInfoFromWeb(word: string): Promise<DictEntryFromN
   try {
     const definitions = await fetchDefinitions(word)
     if (definitions instanceof NotFound) return definitions
-    const translationsRes = await fetchTranslations(word)
-    const etymologyRes = await fetchEtymology(word)
+    const [translationsRes, etymologyRes, etymologyTrees] = await Promise.all([
+      fetchTranslations(word),
+      fetchEtymology(word),
+      fetchEtymologyTrees(word),
+    ])
     return {
       word,
       definitions: definitions.definitions,
       translations: translationsRes.translations,
       etymologies: etymologyRes.etymologies,
+      etymologyTrees,
       definitionsSource: definitions.source,
       translationsSource: translationsRes.source,
       etymologySource: etymologyRes.source,
+      etymologyTreeSource: getEtymologyTreeSource(word),
       type: "net",
     }
   } catch (e: any) {

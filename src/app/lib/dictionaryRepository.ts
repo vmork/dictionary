@@ -41,6 +41,7 @@ function normalizeDictionaryEntry(value: unknown, word: string): DictEntryFromNe
     definitions,
     translations: Array.isArray(entry.translations) ? entry.translations : [],
     etymologies: Array.isArray(entry.etymologies) ? entry.etymologies : [],
+    etymologyTrees: Array.isArray(entry.etymologyTrees) ? entry.etymologyTrees : undefined,
     type: "net",
   } as DictEntryFromNet
 }
