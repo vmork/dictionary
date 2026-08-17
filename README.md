@@ -54,6 +54,17 @@ installation instructions are under `deploy/`.
 Production secrets belong in `/etc/dictionary.env` on the server with mode
 `0600`; they must never be committed. See `.env.example` for required names.
 
+Routine releases are rehearsed against the isolated VPS development clone and
+then deployed with a verified backup and rollback directory:
+
+```sh
+pnpm deploy:vps -- --rehearse-only
+pnpm deploy:vps -- --deploy
+```
+
+See `deploy/README.md` for the full sequence, safety checks, overrides, and
+rollback behavior.
+
 The local backup timer retains fourteen daily custom-format PostgreSQL dumps.
 Those dumps protect against application mistakes, but an off-server copy is
 still required to protect against loss of the VPS.

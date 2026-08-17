@@ -16,6 +16,66 @@ system configuration directly into the application checkout.
 
 No secret, database dump, TLS key, or generated runtime file belongs in Git.
 
+## Routine application deployment
+
+Run deployments from the repository root on a trusted workstation with the VPS
+SSH host configured. Rehearse without changing production:
+
+```sh
+pnpm deploy:vps -- --rehearse-only
+```
+
+Deploy the current `main` branch:
+
+```sh
+pnpm deploy:vps -- --deploy
+```
+
+The command refuses a dirty working tree by default. `--allow-dirty` is an
+explicit escape hatch for a reviewed working copy, and the release name is
+marked `dirty`. Use `--skip-rehearsal` only when the exact same working tree has
+already completed the rehearsal.
+
+The script performs these steps:
+
+1. Installs the locked dependencies, generates route types, type-checks, lints,
+   runs the etymology parser tests, and creates a production build locally.
+2. Opens the guarded SSH tunnel to `dictionary_local_dev`, rehearses all pending
+   migrations, verifies row and JSON shapes, starts the built app, and runs the
+   authenticated ownership/isolation checks.
+3. Checks the production service, Caddy, backup timer, environment-file mode,
+   available commands, and live Caddy configuration.
+4. Uploads to a new directory under `/srv/dictionary/releases/`, installs the
+   locked dependencies there, and builds it before production is stopped.
+5. Creates a fresh custom-format PostgreSQL backup, validates it with
+   `pg_restore --list`, and downloads a mode-`0600` off-server copy. The local
+   directory defaults to the operating system's temporary directory; set
+   `DICTIONARY_OFFSITE_BACKUP_DIR` or pass `--backup-dir` for durable storage.
+6. Records collection, word, user, migration, and JSON-shape invariants; stops
+   the service; preserves the old application directory; swaps in the built
+   release; and runs forward-only migrations.
+7. Requires the pre/post invariants to match, then checks the internal app,
+   systemd, Caddy validation, and public HTTPS endpoint. A release manifest is
+   left in `/srv/dictionary/releases/`.
+
+If migration, startup, or health verification fails after the swap, the script
+moves the failed application aside, restores the previous application directory,
+and starts it again. It deliberately does not restore a database automatically:
+forward migrations may have partially completed across multiple migration files,
+so database restoration remains an explicit operator decision using the backup
+printed by the script.
+
+After a successful deploy, verify an existing authenticated session and the
+specific changed user flow in a browser. Once the release has been stable and a
+durable off-server backup exists, old release directories can be pruned manually.
+
+Useful overrides:
+
+```sh
+DICTIONARY_VPS_SSH_HOST=host pnpm deploy:vps -- --deploy
+pnpm deploy:vps -- --deploy --backup-dir /secure/off-server/path
+```
+
 ## Authentication migration
 
 Take a fresh backup before applying either migration. The deployment sequence is:

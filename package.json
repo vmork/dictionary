@@ -8,6 +8,7 @@
     "dev:account": "tsx src/app/scripts/prepareDevelopmentAccount.ts",
     "build": "next build",
     "db:migrate": "tsx src/app/scripts/migrate.ts",
+    "deploy:vps": "bash deploy/scripts/deploy-vps.sh",
     "start": "next start",
     "lint": "eslint .",
     "seed": "node src/app/scripts/seed.js",
