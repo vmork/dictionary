@@ -1,14 +1,25 @@
-const { sql } = require("@vercel/postgres")
+const postgres = require("postgres")
 const path = require('path')
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env.local') })
 
 async function seed() {
-  // await sql`
-  //   create type lang as enum ('english', 'french', 'spanish', 'german');
-  // `
-  // await sql`
-  //   create type collection_type as enum ('dictionary', 'translations');
-  // `
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured')
+  const sql = postgres(process.env.DATABASE_URL, { max: 1 })
+
+  await sql`
+    do $$ begin
+      create type lang as enum ('english', 'french', 'spanish', 'german');
+    exception
+      when duplicate_object then null;
+    end $$;
+  `
+  await sql`
+    do $$ begin
+      create type collection_type as enum ('dictionary', 'translations');
+    exception
+      when duplicate_object then null;
+    end $$;
+  `
   await sql`
     create table if not exists collections (
       id serial primary key,
@@ -34,6 +45,7 @@ async function seed() {
   // `
   
   console.log('Tables created')
+  await sql.end({ timeout: 5 })
 }
 
 seed().catch(e => {

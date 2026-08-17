@@ -9,6 +9,7 @@ export type DictionaryCollection = {
   id: CollectionID
   name: string
   language: "english" // only english for now
+  wordCount: number
 }
 
 export type TranslationsCollection = {
@@ -17,4 +18,5 @@ export type TranslationsCollection = {
   name: string
   language1: Language
   language2: Language
+  wordCount: number
 }

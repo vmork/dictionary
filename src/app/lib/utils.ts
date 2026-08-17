@@ -6,6 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDateString(s: string) {
-  return DateTime.fromISO(s).toFormat("dd-MM-yyyy")
+export function formatDateString(value: string | Date) {
+  const date = value instanceof Date ? DateTime.fromJSDate(value) : DateTime.fromISO(value)
+  return date.isValid ? date.toFormat("dd LLL yyyy") : "Unknown date"
 }

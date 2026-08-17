@@ -1,32 +1,24 @@
-"use client"
+import { notFound } from "next/navigation"
+import { assertCollectionOwned, CollectionNotFoundError } from "../lib/dictionaryRepository"
+import { requirePageSession } from "../lib/session"
+import PracticePageClient from "./PracticePageClient"
 
-import Link from "next/link"
-import { Button } from "../components/Button"
-import Practice from "./components/Practice"
-import { useSearchParams } from "next/navigation"
-import { Suspense } from "react"
-
-function PracticePageContent() {
-  const searchParams = useSearchParams()
-  const cidString  = searchParams.get("cid")
-  if (!cidString || isNaN(Number(cidString))) {
-    return <div>Invalid collection ID</div>
-  }
-  const cid = Number(cidString)
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="w-full max-w-[640px] mx-auto h-full">
-        <Practice cid={cid}/>
-      </div>
-    </div>
-  )
+type PracticePageProps = {
+  searchParams: Promise<{ cid?: string | string[] }>
 }
 
-export default function PracticePage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <PracticePageContent />
-    </Suspense>
-  )
+export default async function PracticePage({ searchParams }: PracticePageProps) {
+  const session = await requirePageSession()
+  const { cid: cidParam } = await searchParams
+  const cidString = Array.isArray(cidParam) ? cidParam[0] : cidParam
+  if (!cidString || isNaN(Number(cidString))) return notFound()
+
+  try {
+    await assertCollectionOwned(session.user.id, Number(cidString))
+  } catch (error) {
+    if (error instanceof CollectionNotFoundError) return notFound()
+    throw error
+  }
+
+  return <PracticePageClient />
 }

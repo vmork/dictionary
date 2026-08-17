@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "./Button"
 import { CollectionID } from "../lib/collections"
 import { Menu } from "lucide-react"
+import { SignOutButton } from "./SignOutButton"
 
 export function TopMenu({ cid }: { cid: CollectionID }) {
   const [open, setOpen] = useState(false)
@@ -53,6 +54,10 @@ export function TopMenu({ cid }: { cid: CollectionID }) {
           <Link href={`/practice/overview?cid=${cid}`} onClick={() => setOpen(false)}>
             <button className="hover:underline hover:bg-transparent text-dark hover:text-primary py-1">Statistics</button>
           </Link>
+          <Link href="/account" onClick={() => setOpen(false)}>
+            <button className="hover:underline hover:bg-transparent text-dark hover:text-primary py-1">Account</button>
+          </Link>
+          <SignOutButton className="mt-2 bg-secondary hover:brightness-110 text-gray-800 px-3 py-1" />
         </div>
       )}
     </div>

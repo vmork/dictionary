@@ -34,7 +34,7 @@ async function resetAllPracticeData(cid: CollectionID) {
 }
 
 async function deleteWord(cid: CollectionID, word: string) {
-  const res = await fetch(`/api/word?cid=${cid}&word=${word}`, { method: "DELETE", cache: "no-cache" })
+  const res = await fetch(`/api/word?cid=${cid}&word=${encodeURIComponent(word)}`, { method: "DELETE", cache: "no-cache" })
   if (!res.ok) throw new Error(res.status + ": " + res.statusText)
 }
 
@@ -46,11 +46,13 @@ async function getWordInfo(cid: CollectionID, word: string): Promise<DictEntryFr
 
 export async function getAllWords(cid: CollectionID): Promise<string[]> {
   const res = await fetch(`/api/allWords?cid=${cid}&info=false`, { cache: "no-cache" })
+  if (!res.ok) throw new Error(res.status + ": " + res.statusText)
   return res.json()
 }
 
 export async function getWordsDB(cid: CollectionID): Promise<WordsDataMap> {
   const res = await fetch(`/api/allWords?cid=${cid}&info=true`, { cache: "no-cache" })
+  if (!res.ok) throw new Error(res.status + ": " + res.statusText)
   const data: (DictDBRow & { id: number })[] = await res.json()
   const map: WordsDataMap = new Map()
   data.forEach((row) => map.set(row.word, row))
@@ -59,8 +61,23 @@ export async function getWordsDB(cid: CollectionID): Promise<WordsDataMap> {
 
 export async function getCollections(): Promise<Collection[]> {
   const res = await fetch("/api/collections", { cache: "no-cache" })
-  console.log("collections: ", res)
+  if (!res.ok) throw new Error(res.status + ": " + res.statusText)
   return res.json()
+}
+
+async function createCollection(name: string): Promise<Collection> {
+  const res = await fetch("/api/collections", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, type: "dictionary", lang1: "english", lang2: null }),
+  })
+  if (!res.ok) throw new Error((await res.text()) || res.statusText)
+  return res.json()
+}
+
+async function deleteCollection(cid: CollectionID) {
+  const res = await fetch(`/api/collections?cid=${cid}`, { method: "DELETE" })
+  if (!res.ok) throw new Error((await res.text()) || res.statusText)
 }
 
 // Hooks: useWordInfo, useWordList, useAddWord, useDeleteWord
@@ -70,6 +87,14 @@ export function useCollectionList() {
     queryKey: ["collections"],
     queryFn: getCollections,
   })
+}
+
+export function useCreateCollection() {
+  return useMutation({ mutationFn: (name: string) => createCollection(name) })
+}
+
+export function useDeleteCollection() {
+  return useMutation({ mutationFn: (cid: CollectionID) => deleteCollection(cid) })
 }
 
 export function useWordsDB(cid: CollectionID) {

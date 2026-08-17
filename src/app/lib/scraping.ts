@@ -51,10 +51,10 @@ async function fetchDefinitionsFromSource(
   const url =
     source === "thesaurus"
       ? `${baseUrl}/thesaurus/json/${encodeURIComponent(word)}?key=${
-          process.env.NEXT_PUBLIC_MERRIAM_WEBSTER_API_KEY_THESAURUS
+          process.env.MERRIAM_WEBSTER_API_KEY_THESAURUS
         }`
       : `${baseUrl}/collegiate/json/${encodeURIComponent(word)}?key=${
-          process.env.NEXT_PUBLIC_MERRIAM_WEBSTER_API_KEY_DICTIONARY
+          process.env.MERRIAM_WEBSTER_API_KEY_DICTIONARY
         }`
 
   let data: any[]

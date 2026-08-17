@@ -1,8 +1,8 @@
-import { db, sql } from '@vercel/postgres'
 import path from 'path'
 import dotenv from 'dotenv'
 import { fetchWordInfoFromWeb } from '../lib/scraping'
 import { APIError, NotFound, DictEntryFromNet } from '../lib/types'
+import { getSql } from '../lib/db'
 
 // Load .env.local like seed script (relative two levels up from this file)
 dotenv.config({ path: path.resolve(__dirname, '../../../.env.local') })
@@ -22,20 +22,17 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env.local') })
  *   --max=<n> / --maxNumWords=<n> Limit number of words processed (after filtering by collection)
  */
 async function getAllWordsWithIds(collectionFilter?: number) {
-  const client = await db.connect()
-  try {
-    if (collectionFilter != null) {
-      const res = await client.sql`SELECT id, word, collection_id FROM words WHERE collection_id = ${collectionFilter}`
-      return res.rows as { id: number; word: string; collection_id: number }[]
-    }
-    const res = await client.sql`SELECT id, word, collection_id FROM words` // potentially large
-    return res.rows as { id: number; word: string; collection_id: number }[]
-  } finally {
-    client.release()
+  const sql = getSql()
+  type WordRow = { id: number; word: string; collection_id: number }
+
+  if (collectionFilter != null) {
+    return sql<WordRow[]>`SELECT id, word, collection_id FROM words WHERE collection_id = ${collectionFilter}`
   }
+  return sql<WordRow[]>`SELECT id, word, collection_id FROM words` // potentially large
 }
 
 async function updateWordDictEntry(wordId: number, info: DictEntryFromNet) {
+  const sql = getSql()
   await sql`UPDATE words SET dict_entry = ${JSON.stringify(info)} WHERE id = ${wordId}`
 }
 

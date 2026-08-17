@@ -1,0 +1,24 @@
+[Unit]
+Description=Dictionary Next.js application
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=dictionary
+Group=dictionary
+WorkingDirectory=/srv/dictionary/app
+EnvironmentFile=/etc/dictionary.env
+Environment=NODE_ENV=production
+ExecStartPre=/usr/bin/test -n ${DATABASE_URL}
+ExecStartPre=/usr/bin/test -n ${BETTER_AUTH_URL}
+ExecStartPre=/usr/bin/test -n ${BETTER_AUTH_SECRET}
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3002
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
