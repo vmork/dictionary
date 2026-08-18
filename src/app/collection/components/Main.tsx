@@ -3,7 +3,7 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query"
 import { DateTime } from "luxon"
 import Link from "next/link"
-import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useAddWord, useDeleteWord, useWordsDB } from "../../api/queries"
 import { useScreenSize } from "../../lib/screenSizeHook"
 
@@ -18,7 +18,7 @@ import {
 import { cn } from "../../lib/utils"
 import { Button } from "../../components/Button"
 import { SortDropdown } from "../../components/SortDropdown"
-import { defaultSortKeys, sortEntries, SortKey } from "../../lib/sorting"
+import { defaultSortKeyName, defaultSortKeys, sortEntries, SortKey, SortKeyName } from "../../lib/sorting"
 import WordDataPage from "./DictEntryPage"
 import { MoveLeft, MoveRight } from "lucide-react"
 import { CollectionID } from "@/app/lib/collections"
@@ -67,6 +67,8 @@ export default function Main({ cid }: { cid: CollectionID }) {
   const [inputText, setInputText] = useState<string>("")
   const [currentWord, setCurrentWord] = useState<string>("")
   const [sortKeys, setSortKeys] = useState<SortKey[]>(defaultSortKeys)
+  const [selectedSortKeyName, setSelectedSortKeyName] = useState<SortKeyName>(defaultSortKeyName)
+  const [confirmDeleteWord, setConfirmDeleteWord] = useState<string | null>(null)
 
   const wordsDataQuery = useWordsDB(cid)
   const wordsData: WordsDataMap = useMemo(() => wordsDataQuery.data ?? new Map(), [wordsDataQuery])
@@ -79,9 +81,10 @@ export default function Main({ cid }: { cid: CollectionID }) {
       word
     })) as DictEntryFromDB[]
     
-    const sortedEntries = sortEntries(entries, sortKeys)
+    const selectedSortKey = sortKeys.find((sortKey) => sortKey.name === selectedSortKeyName) ?? sortKeys[0]
+    const sortedEntries = sortEntries(entries, selectedSortKey)
     return sortedEntries.map(entry => entry.word)
-  }, [wordsData, sortKeys])
+  }, [selectedSortKeyName, sortKeys, wordsData])
 
   const addWordMutation = useAddWord(cid)
   const deleteWordMutation = useDeleteWord(cid)
@@ -156,6 +159,7 @@ export default function Main({ cid }: { cid: CollectionID }) {
   function dbDeleteWord(word: string) {
     deleteWordMutation.mutate(word, {
       onSuccess: () => {
+        setConfirmDeleteWord(null)
         queryClient.setQueryData(["wordsDB", cid], (old: WordsDataMap) => {
           const newMap = new Map(old)
           newMap.delete(word)
@@ -231,7 +235,12 @@ export default function Main({ cid }: { cid: CollectionID }) {
               {wordsDataQuery.isPending ? `Loading...` : `${wordSet.size} words`}
             </h2>
             <div className="ml-3">
-              <SortDropdown sortKeys={sortKeys} setSortKeys={setSortKeys} />
+              <SortDropdown
+                sortKeys={sortKeys}
+                selectedSortKeyName={selectedSortKeyName}
+                setSortKeys={setSortKeys}
+                setSelectedSortKeyName={setSelectedSortKeyName}
+              />
             </div>
           </div>
       <ul className="flex flex-wrap gap-2 overflow-y-auto sm:block sm:columns-[120px] sm:gap-x-3">
@@ -262,50 +271,78 @@ export default function Main({ cid }: { cid: CollectionID }) {
                   else if (searchAddDeleteState === "add") dbAddWord(currentWord, currentWordData as DictEntry)
                 }
               }}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                setInputText(e.target.value)
+                setConfirmDeleteWord(null)
+              }}
             />
+            <Button className="hidden sm:block" disabled={inputText === ""} onClick={search}>
+              Search
+            </Button>
             {searchAddDeleteState === "search" ? (
-              <Button disabled={inputText === ""} onClick={search}>
+              <Button className="sm:hidden" disabled={inputText === ""} onClick={search}>
                 Search
               </Button>
-            ) : searchAddDeleteState === "delete" ? (
-              <Button className={"bg-reddish"} onClick={() => dbDeleteWord(currentWord)}>Delete</Button>
             ) : (
-              <Button
-                onClick={() => dbAddWord(currentWord, currentWordData as DictEntry)}
-                disabled={!canAddCurrentWord}
-              >
-                Add
-              </Button>
+              <WordActionButton
+                className="sm:hidden"
+                action={searchAddDeleteState}
+                word={currentWord}
+                canAdd={Boolean(canAddCurrentWord)}
+                addPending={addWordMutation.isPending}
+                deletePending={deleteWordMutation.isPending}
+                deleteConfirmationOpen={confirmDeleteWord === currentWord}
+                onAdd={() => dbAddWord(currentWord, currentWordData as DictEntry)}
+                onRequestDelete={() => setConfirmDeleteWord(currentWord)}
+                onCancelDelete={() => setConfirmDeleteWord(null)}
+                onConfirmDelete={() => dbDeleteWord(currentWord)}
+              />
             )}
           </div>
         </div>
 
         {/* Word info section */}
-        <div className="p-3 sm:px-5 overflow-auto">
-          {currentWordData instanceof APIError ? (
-            <h2 className="text-red-600 font-bold">
-              API error: <span className="text-black font-normal">{currentWordData.message}</span>
-            </h2>
-          ) : (
-            <Suspense fallback={<h2 className="text-3xl">Loading...</h2>}>
-              {currentWordData && (
-                <div className="flex mb-2 gap-1 sticky top-[-12px] bg-background items-center">
-                  <NavigationButtons />
-                  <div className="ml-auto">
-                    <TopMenu cid={cid} />
+        <div className="relative min-h-0 overflow-hidden">
+          <div className="h-full overflow-auto p-3 sm:px-5 sm:pb-24">
+            {currentWordData instanceof APIError ? (
+              <h2 className="text-red-600 font-bold">
+                API error: <span className="text-black font-normal">{currentWordData.message}</span>
+              </h2>
+            ) : (
+              <Suspense fallback={<h2 className="text-3xl">Loading...</h2>}>
+                {currentWordData && (
+                  <div className="flex mb-2 gap-1 sticky top-[-12px] bg-background items-center">
+                    <NavigationButtons />
+                    <div className="ml-auto">
+                      <TopMenu cid={cid} />
+                    </div>
                   </div>
-                </div>
-              )}
-              <WordDataPage
-                setCurrentWord={(word) => {
-                  setInputText(word)
-                  updateCurrentWord(word)
-                }}
-                data={currentWordData}
-                wordSet={wordSet}
-              />
-            </Suspense>
+                )}
+                <WordDataPage
+                  setCurrentWord={(word) => {
+                    setInputText(word)
+                    updateCurrentWord(word)
+                  }}
+                  data={currentWordData}
+                  wordSet={wordSet}
+                />
+              </Suspense>
+            )}
+          </div>
+          {searchAddDeleteState !== "search" && (
+            <WordActionButton
+              className="absolute bottom-5 left-1/2 z-30 hidden -translate-x-1/2 sm:block"
+              action={searchAddDeleteState}
+              word={currentWord}
+              canAdd={Boolean(canAddCurrentWord)}
+              addPending={addWordMutation.isPending}
+              deletePending={deleteWordMutation.isPending}
+              deleteConfirmationOpen={confirmDeleteWord === currentWord}
+              onAdd={() => dbAddWord(currentWord, currentWordData as DictEntry)}
+              onRequestDelete={() => setConfirmDeleteWord(currentWord)}
+              onCancelDelete={() => setConfirmDeleteWord(null)}
+              onConfirmDelete={() => dbDeleteWord(currentWord)}
+            />
           )}
         </div>
 
@@ -378,4 +415,100 @@ export default function Main({ cid }: { cid: CollectionID }) {
       </div>
     )
   }
+}
+
+function WordActionButton({
+  action,
+  word,
+  canAdd,
+  addPending,
+  deletePending,
+  deleteConfirmationOpen,
+  onAdd,
+  onRequestDelete,
+  onCancelDelete,
+  onConfirmDelete,
+  className,
+}: {
+  action: "add" | "delete"
+  word: string
+  canAdd: boolean
+  addPending: boolean
+  deletePending: boolean
+  deleteConfirmationOpen: boolean
+  onAdd: () => void
+  onRequestDelete: () => void
+  onCancelDelete: () => void
+  onConfirmDelete: () => void
+  className?: string
+}) {
+  const confirmationId = useId()
+  const confirmationLabelId = useId()
+
+  if (action === "add") {
+    return (
+      <div className={cn("relative flex-none", className)}>
+        <Button
+          className="min-w-20 bg-green-600 text-white shadow-lg ring-1 ring-green-700/20"
+          onClick={onAdd}
+          disabled={!canAdd || addPending}
+        >
+          {addPending ? "Adding…" : "Add"}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cn("relative flex-none", className)}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault()
+          onCancelDelete()
+        }
+      }}
+    >
+      <Button
+        className="min-w-20 bg-reddish shadow-lg ring-1 ring-red-300/40"
+        type="button"
+        aria-controls={confirmationId}
+        aria-expanded={deleteConfirmationOpen}
+        aria-haspopup="dialog"
+        onClick={deleteConfirmationOpen ? onCancelDelete : onRequestDelete}
+        disabled={deletePending}
+      >
+        Delete
+      </Button>
+      {deleteConfirmationOpen && (
+        <div
+          id={confirmationId}
+          role="dialog"
+          aria-labelledby={confirmationLabelId}
+          className="absolute bottom-[calc(100%+0.75rem)] right-0 z-40 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-white p-3 text-left shadow-xl sm:left-1/2 sm:right-auto sm:-translate-x-1/2"
+        >
+          <p id={confirmationLabelId} className="font-semibold text-dark">Delete “{word}”?</p>
+          <p className="mt-1 text-sm text-neutral-600">Are you sure? This cannot be undone.</p>
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded px-2.5 py-1.5 text-sm text-neutral-600 transition hover:bg-neutral-100"
+              onClick={onCancelDelete}
+              disabled={deletePending}
+            >
+              Cancel
+            </button>
+            <Button
+              className="bg-red-600 px-2.5 py-1.5 text-sm text-white"
+              onClick={onConfirmDelete}
+              disabled={deletePending}
+            >
+              {deletePending ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+          <span className="absolute -bottom-1.5 right-7 h-3 w-3 rotate-45 border-b border-r border-border bg-white sm:left-1/2 sm:right-auto sm:-translate-x-1/2" />
+        </div>
+      )}
+    </div>
+  )
 }

@@ -1,10 +1,14 @@
 import { DictEntryFromDB } from "./types";
 
+export type SortKeyName = "Alphabetical" | "Recently added";
+
 export type SortKey = {
-  name: string;
+  name: SortKeyName;
   ascending: boolean;
   comparator: (a: DictEntryFromDB, b: DictEntryFromDB) => number;
 };
+
+export const defaultSortKeyName: SortKeyName = "Alphabetical";
 
 export const defaultSortKeys: SortKey[] = [
   {
@@ -13,18 +17,15 @@ export const defaultSortKeys: SortKey[] = [
     comparator: (a, b) => a.word.localeCompare(b.word),
   },
   {
-    name: "Date added",
-    ascending: true,
+    name: "Recently added",
+    ascending: false,
     comparator: (a, b) => new Date(a.timeAdded).getTime() - new Date(b.timeAdded).getTime(),
   },
 ];
 
-export function sortEntries(entries: DictEntryFromDB[], sortKeys: SortKey[]): DictEntryFromDB[] {
+export function sortEntries(entries: DictEntryFromDB[], sortKey: SortKey): DictEntryFromDB[] {
   return [...entries].sort((a, b) => {
-    for (let key of sortKeys) {
-      const c = (key.ascending ? 1 : -1) * key.comparator(a, b);
-      if (c != 0) return c;
-    }
-    return 0;
+    const comparison = (sortKey.ascending ? 1 : -1) * sortKey.comparator(a, b);
+    return comparison || a.word.localeCompare(b.word);
   });
 }
