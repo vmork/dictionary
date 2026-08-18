@@ -4,6 +4,7 @@ import Link from "next/link"
 import { cn, formatDateString } from "../../lib/utils"
 import { Check, X } from "lucide-react"
 import EtymologyTree from "./EtymologyTree"
+import WordImages from "./WordImages"
 
 function PracticeStatsDisplay({ practiceData, timeAdded }: { practiceData: PracticeData; timeAdded: string }) {
   const recallPercentage =
@@ -91,6 +92,8 @@ export default function WordDataPage({
       <h1 className="text-5xl font-bold mb-2">{data.word}</h1>
 
       {data.type === "db" && <PracticeStatsDisplay practiceData={data.practiceData} timeAdded={data.timeAdded} />}
+
+      <WordImages word={data.word} definitions={data.definitions} />
 
       {/* Translations */}
       {data.translations.length > 0 && (

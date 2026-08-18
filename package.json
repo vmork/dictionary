@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "seed": "node src/app/scripts/seed.js",
     "test:etymology-tree": "tsx --test src/app/lib/etymologyTree.test.ts",
+    "test:word-images": "tsx --test src/app/lib/wikimediaImages.test.ts",
     "test:auth-isolation": "tsx src/app/scripts/testAuthIsolation.ts",
     "owner:bootstrap": "tsx src/app/scripts/bootstrapOwner.ts",
     "user:set-password": "tsx src/app/scripts/setUserPassword.ts",
