@@ -8,6 +8,7 @@ import type {
   EtymologyTreeNode,
   LinkWithTitle,
 } from "@/app/lib/types"
+import { findCollapsedSharedAncestryPaths } from "@/app/lib/etymologyTreeDisplay"
 import { cn } from "@/app/lib/utils"
 
 const PART_OF_SPEECH_LABELS: Record<string, string> = {
@@ -23,7 +24,15 @@ function edgeClass(relation?: EtymologyRelation): string {
   return "border-neutral-400 border-solid"
 }
 
-function NodeCard({ node, isRoot }: { node: EtymologyTreeNode; isRoot: boolean }) {
+function NodeCard({
+  node,
+  isRoot,
+  sharedAncestry = false,
+}: {
+  node: EtymologyTreeNode
+  isRoot: boolean
+  sharedAncestry?: boolean
+}) {
   return (
     <div
       className={cn(
@@ -48,24 +57,45 @@ function NodeCard({ node, isRoot }: { node: EtymologyTreeNode; isRoot: boolean }
       {node.gloss && (
         <div className="mt-1 break-words text-xs leading-snug text-neutral-500">{node.gloss}</div>
       )}
+      {sharedAncestry && (
+        <div className="mt-1.5 border-t border-dashed border-neutral-300 pt-1 text-[0.65rem] font-medium uppercase tracking-wide text-neutral-400">
+          shared ancestry
+        </div>
+      )}
     </div>
   )
 }
 
-function OriginNode({ node, isRoot = false }: { node: EtymologyTreeNode; isRoot?: boolean }) {
-  const hasMultipleParents = node.parents.length > 1
+function OriginNode({
+  node,
+  collapsedPaths,
+  isRoot = false,
+  path = "root",
+}: {
+  node: EtymologyTreeNode
+  collapsedPaths: Set<string>
+  isRoot?: boolean
+  path?: string
+}) {
+  const sharedAncestry = collapsedPaths.has(path)
+  const visibleParents = sharedAncestry ? [] : node.parents
+  const hasMultipleParents = visibleParents.length > 1
 
   return (
     <div className="flex min-w-max flex-col items-center">
-      {node.parents.length > 0 && (
+      {visibleParents.length > 0 && (
         <>
           <div className="flex items-end">
-            {node.parents.map((parent, index) => (
+            {visibleParents.map((parent, index) => (
               <div
                 className="relative flex min-w-max flex-col items-center px-2"
                 key={`${parent.languageCode}:${parent.word}:${index}`}
               >
-                <OriginNode node={parent} />
+                <OriginNode
+                  node={parent}
+                  collapsedPaths={collapsedPaths}
+                  path={`${path}.${index}`}
+                />
                 <div
                   aria-hidden="true"
                   className={cn("h-4 border-l-2", edgeClass(parent.relationToChild))}
@@ -75,7 +105,7 @@ function OriginNode({ node, isRoot = false }: { node: EtymologyTreeNode; isRoot?
                     aria-hidden="true"
                     className={cn(
                       "absolute bottom-0 border-t-2 border-neutral-300",
-                      index === 0 ? "left-1/2 right-0" : index === node.parents.length - 1 ? "left-0 right-1/2" : "left-0 right-0"
+                      index === 0 ? "left-1/2 right-0" : index === visibleParents.length - 1 ? "left-0 right-1/2" : "left-0 right-0"
                     )}
                   />
                 )}
@@ -85,7 +115,7 @@ function OriginNode({ node, isRoot = false }: { node: EtymologyTreeNode; isRoot?
           <div aria-hidden="true" className="h-4 border-l-2 border-neutral-300" />
         </>
       )}
-      <NodeCard node={node} isRoot={isRoot} />
+      <NodeCard node={node} isRoot={isRoot} sharedAncestry={sharedAncestry} />
     </div>
   )
 }
@@ -161,6 +191,8 @@ export default function EtymologyTree({
 
   if (resolvedTrees.length === 0) return null
 
+  const collapsedPathsByTree = resolvedTrees.map((tree) => findCollapsedSharedAncestryPaths(tree.root))
+
   return (
     <section className="mb-4 mt-1 max-w-full rounded-lg border border-neutral-200 bg-neutral-50/70 p-3 sm:p-4">
       <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -190,7 +222,11 @@ export default function EtymologyTree({
           )}
           <div className="overflow-x-auto pb-2 pt-1">
             <div className="flex min-w-max justify-center px-2">
-              <OriginNode node={tree.root} isRoot />
+              <OriginNode
+                node={tree.root}
+                collapsedPaths={collapsedPathsByTree[index]}
+                isRoot
+              />
             </div>
           </div>
         </figure>

@@ -6,6 +6,7 @@ import {
   parseKaikkiJsonLines,
   type KaikkiTemplate,
 } from "./etymologyTree"
+import { findCollapsedSharedAncestryPaths } from "./etymologyTreeDisplay"
 import type { EtymologyTree } from "./types"
 
 test("parseKaikkiJsonLines keeps valid ancestry fields and ignores malformed lines", () => {
@@ -154,4 +155,46 @@ test("identical trees shared by multiple parts of speech are shown once", () => 
   }
 
   assert.deepEqual(dedupeEtymologyTrees([nounTree, verbTree, distinctTree]), [nounTree, distinctTree])
+})
+
+test("the deeper occurrence of the largest shared ancestry is collapsed", () => {
+  const brouiller = {
+    word: "brouiller",
+    language: "French",
+    languageCode: "fr",
+    relationToChild: "formed" as const,
+    parents: [{
+      word: "brouiller",
+      language: "Old French",
+      languageCode: "fro",
+      relationToChild: "inherited" as const,
+      parents: [],
+    }],
+  }
+  const firstEmbrouiller = {
+    word: "embrouiller",
+    language: "French",
+    languageCode: "fr",
+    gloss: "muddle, embroil",
+    relationToChild: "derived" as const,
+    parents: [structuredClone(brouiller)],
+  }
+  const secondEmbrouiller = {
+    ...structuredClone(firstEmbrouiller),
+    gloss: "to embroil, muddle",
+  }
+  const root: EtymologyTree["root"] = {
+    word: "imbroglio",
+    language: "English",
+    languageCode: "en",
+    parents: [{
+      word: "imbroglio",
+      language: "Italian",
+      languageCode: "it",
+      relationToChild: "borrowed",
+      parents: [firstEmbrouiller],
+    }, secondEmbrouiller],
+  }
+
+  assert.deepEqual([...findCollapsedSharedAncestryPaths(root)], ["root.0.0"])
 })
