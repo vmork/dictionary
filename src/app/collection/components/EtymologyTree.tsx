@@ -140,6 +140,8 @@ export default function EtymologyTree({
 }) {
   const [fetchedTrees, setFetchedTrees] = useState<EtymologyTreeData[] | undefined>()
   const [fetchedSource, setFetchedSource] = useState<LinkWithTitle | undefined>()
+  const [fetchError, setFetchError] = useState(false)
+  const [retryAttempt, setRetryAttempt] = useState(0)
 
   useEffect(() => {
     if (trees !== undefined) return
@@ -160,18 +162,48 @@ export default function EtymologyTree({
         if (!controller.signal.aborted) {
           setFetchedTrees(Array.isArray(result.trees) ? result.trees : [])
           setFetchedSource(result.source)
+          setFetchError(false)
         }
       } catch {
-        if (!controller.signal.aborted) setFetchedTrees([])
+        if (!controller.signal.aborted) setFetchError(true)
       }
     }
 
-    void loadTrees()
-    return () => controller.abort()
-  }, [trees, word])
+    const delay = window.setTimeout(() => void loadTrees(), 100)
+    return () => {
+      window.clearTimeout(delay)
+      controller.abort()
+    }
+  }, [retryAttempt, trees, word])
 
   const resolvedTrees = trees ?? fetchedTrees
   const resolvedSource = source ?? fetchedSource
+
+  if (resolvedTrees === undefined && fetchError) {
+    return (
+      <section
+        aria-label={`Origin tree unavailable for ${word}`}
+        className="mb-4 mt-1 max-w-full rounded-lg border border-amber-200 bg-amber-50/60 p-3 sm:p-4"
+      >
+        <h4 className="text-lg font-semibold">Origin</h4>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-neutral-600">
+          <span>The visual origin could not be loaded.</span>
+          <button
+            type="button"
+            className="rounded-md border border-neutral-300 bg-white px-2.5 py-1 font-medium text-neutral-700 transition hover:border-primary hover:text-primary"
+            onClick={() => {
+              setFetchError(false)
+              setFetchedTrees(undefined)
+              setFetchedSource(undefined)
+              setRetryAttempt((attempt) => attempt + 1)
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </section>
+    )
+  }
 
   if (resolvedTrees === undefined) {
     return (

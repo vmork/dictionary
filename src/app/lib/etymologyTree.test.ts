@@ -3,6 +3,7 @@ import test from "node:test"
 import {
   dedupeEtymologyTrees,
   extractEtymologyParentReferences,
+  fetchEtymologyTrees,
   parseKaikkiJsonLines,
   type KaikkiTemplate,
 } from "./etymologyTree"
@@ -48,6 +49,35 @@ test("a direct derivation takes precedence over a broad root shortcut", () => {
     romanization: undefined,
     uncertain: false,
     stopRecursion: false,
+  }])
+})
+
+test("ordered direct sources form an ancestry chain", () => {
+  const templates: KaikkiTemplate[] = [
+    { name: "root", args: { 1: "en", 2: "ine-pro", 3: "*puH-" } },
+    { name: "bor", args: { 1: "en", 2: "frm", 3: "purulent" } },
+    { name: "der", args: { 1: "en", 2: "la", 3: "pūrulentus" } },
+  ]
+
+  assert.deepEqual(extractEtymologyParentReferences(templates), [{
+    word: "purulent",
+    lookupWord: "purulent",
+    languageCode: "frm",
+    relation: "borrowed",
+    gloss: undefined,
+    romanization: undefined,
+    uncertain: false,
+    stopRecursion: false,
+    parents: [{
+      word: "pūrulentus",
+      lookupWord: "pūrulentus",
+      languageCode: "la",
+      relation: "derived",
+      gloss: undefined,
+      romanization: undefined,
+      uncertain: false,
+      stopRecursion: false,
+    }],
   }])
 })
 
@@ -197,4 +227,49 @@ test("the deeper occurrence of the largest shared ancestry is collapsed", () => 
   }
 
   assert.deepEqual([...findCollapsedSharedAncestryPaths(root)], ["root.0.0"])
+})
+
+test("tree fetch failures reject and caller cancellation reaches the upstream request", async () => {
+  const originalFetch = globalThis.fetch
+
+  try {
+    globalThis.fetch = (async () => new Response("Unavailable", { status: 503 })) as typeof fetch
+    await assert.rejects(
+      fetchEtymologyTrees("purulent"),
+      /Kaikki request failed \(503\)/
+    )
+
+    let upstreamSignal: AbortSignal | undefined
+    globalThis.fetch = ((_input, init) => {
+      upstreamSignal = init?.signal ?? undefined
+      return new Promise<Response>((_resolve, reject) => {
+        if (!upstreamSignal) {
+          reject(new Error("Missing upstream abort signal"))
+          return
+        }
+
+        const rejectForAbort = () => reject(
+          upstreamSignal?.reason ?? new DOMException("Aborted", "AbortError")
+        )
+        if (upstreamSignal.aborted) {
+          rejectForAbort()
+        } else {
+          upstreamSignal.addEventListener("abort", rejectForAbort, { once: true })
+        }
+      })
+    }) as typeof fetch
+
+    const controller = new AbortController()
+    const lookup = fetchEtymologyTrees("purulent", { signal: controller.signal })
+    controller.abort(new DOMException("Word changed", "AbortError"))
+
+    await assert.rejects(lookup, (error) => (
+      error instanceof DOMException
+      && error.name === "AbortError"
+      && error.message === "Word changed"
+    ))
+    assert.equal(upstreamSignal?.aborted, true)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })

@@ -269,7 +269,7 @@ export async function fetchWordInfoFromWeb(word: string): Promise<DictEntryFromN
     const [translationsRes, etymologyRes, etymologyTrees] = await Promise.all([
       fetchTranslations(word),
       fetchEtymology(word),
-      fetchEtymologyTrees(word),
+      fetchEtymologyTrees(word).catch(() => undefined),
     ])
     return {
       word,

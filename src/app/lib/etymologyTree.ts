@@ -55,12 +55,17 @@ export type EtymologyParentReference = {
   romanization?: string
   uncertain?: boolean
   stopRecursion?: boolean
+  parents?: EtymologyParentReference[]
 }
 
 type BuildContext = {
   signal: AbortSignal
   fetchedEntries: Map<string, Promise<KaikkiEntry[]>>
   nodeCount: number
+}
+
+export type FetchEtymologyTreesOptions = {
+  signal?: AbortSignal
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -320,7 +325,8 @@ function extractFormationReferences(template: KaikkiTemplate): EtymologyParentRe
 }
 
 function referenceKey(reference: EtymologyParentReference): string {
-  return `${reference.languageCode}:${reference.lookupWord}:${reference.relation}`
+  const parents = reference.parents?.map(referenceKey).sort().join("|") ?? ""
+  return `${reference.languageCode}:${reference.lookupWord}:${reference.relation}:[${parents}]`
 }
 
 function dedupeReferences(references: EtymologyParentReference[]): EtymologyParentReference[] {
@@ -333,19 +339,32 @@ function dedupeReferences(references: EtymologyParentReference[]): EtymologyPare
   })
 }
 
+function chainDirectReferences(references: EtymologyParentReference[]): EtymologyParentReference[] {
+  if (references.length < 2) return references
+
+  let chain = references.at(-1) as EtymologyParentReference
+  for (let index = references.length - 2; index >= 0; index -= 1) {
+    chain = { ...references[index], parents: [chain] }
+  }
+  return [chain]
+}
+
 export function extractEtymologyParentReferences(templates: KaikkiTemplate[]): EtymologyParentReference[] {
   const treeReferences = templates
     .filter((template) => ["ety", "etymon"].includes(template.name.toLowerCase()))
     .flatMap(extractEtyReferences)
   if (treeReferences.length > 0) return dedupeReferences(treeReferences)
 
-  const directReferences = templates
+  const directReferences = dedupeReferences(templates
     .filter((template) => template.name.toLowerCase() !== "root")
-    .flatMap((template) => [
-      ...extractDirectReference(template),
-      ...extractFormationReferences(template),
+    .flatMap(extractDirectReference))
+  const formationReferences = dedupeReferences(templates.flatMap(extractFormationReferences))
+  if (directReferences.length > 0 || formationReferences.length > 0) {
+    return dedupeReferences([
+      ...chainDirectReferences(directReferences),
+      ...formationReferences,
     ])
-  if (directReferences.length > 0) return dedupeReferences(directReferences)
+  }
 
   return dedupeReferences(
     templates
@@ -450,6 +469,7 @@ async function buildParentNode(
   path: Set<string>,
   context: BuildContext
 ): Promise<EtymologyTreeNode | null> {
+  context.signal.throwIfAborted()
   if (context.nodeCount >= MAX_TREE_NODES) return null
   context.nodeCount += 1
 
@@ -467,18 +487,21 @@ async function buildParentNode(
 
   if (depth >= MAX_TREE_DEPTH || reference.stopRecursion || path.has(key)) return node
 
-  let entry: KaikkiEntry | undefined
-  try {
-    entry = selectEntry(await fetchKaikkiEntries(reference.lookupWord, context), reference.languageCode)
-  } catch {
-    return node
+  const explicitParentReferences = reference.parents ?? []
+  const entry = selectEntry(
+    await fetchKaikkiEntries(reference.lookupWord, context),
+    reference.languageCode
+  )
+  if (entry) {
+    node.word = canonicalForm(entry) ?? reference.word
+    node.language = entry.lang
   }
-  if (!entry) return node
 
-  node.word = canonicalForm(entry) ?? reference.word
-  node.language = entry.lang
-
-  const parentReferences = extractEtymologyParentReferences(entry.etymologyTemplates)
+  const parentReferences = explicitParentReferences.length > 0
+    ? explicitParentReferences
+    : entry
+      ? extractEtymologyParentReferences(entry.etymologyTemplates)
+      : []
   if (parentReferences.length === 0) return node
 
   const nextPath = new Set(path)
@@ -494,18 +517,25 @@ async function buildParentNode(
 }
 
 function referenceTreeSignature(references: EtymologyParentReference[]): string {
+  function signatureValue(reference: EtymologyParentReference): unknown[] {
+    return [
+      reference.word,
+      reference.lookupWord,
+      reference.languageCode,
+      reference.relation,
+      reference.gloss ?? null,
+      reference.romanization ?? null,
+      reference.uncertain ?? false,
+      reference.stopRecursion ?? false,
+      (reference.parents ?? [])
+        .map(signatureValue)
+        .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+    ]
+  }
+
   return JSON.stringify(
     references
-      .map((reference) => [
-        reference.word,
-        reference.lookupWord,
-        reference.languageCode,
-        reference.relation,
-        reference.gloss ?? null,
-        reference.romanization ?? null,
-        reference.uncertain ?? false,
-        reference.stopRecursion ?? false,
-      ])
+      .map(signatureValue)
       .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
   )
 }
@@ -533,9 +563,20 @@ export function dedupeEtymologyTrees(trees: EtymologyTree[]): EtymologyTree[] {
   })
 }
 
-export async function fetchEtymologyTrees(word: string): Promise<EtymologyTree[]> {
+export async function fetchEtymologyTrees(
+  word: string,
+  options: FetchEtymologyTreesOptions = {}
+): Promise<EtymologyTree[]> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), TREE_TIMEOUT_MS)
+  const abortFromCaller = () => controller.abort(options.signal?.reason)
+  if (options.signal?.aborted) {
+    abortFromCaller()
+  } else {
+    options.signal?.addEventListener("abort", abortFromCaller, { once: true })
+  }
+  const timeout = setTimeout(() => {
+    controller.abort(new DOMException("Etymology lookup timed out", "TimeoutError"))
+  }, TREE_TIMEOUT_MS)
   const context: BuildContext = {
     signal: controller.signal,
     fetchedEntries: new Map(),
@@ -548,6 +589,7 @@ export async function fetchEtymologyTrees(word: string): Promise<EtymologyTree[]
     const seenReferences = new Set<string>()
 
     for (const entry of entries) {
+      context.signal.throwIfAborted()
       if (trees.length >= MAX_TREES || context.nodeCount >= MAX_TREE_NODES) break
 
       const references = extractEtymologyParentReferences(entry.etymologyTemplates)
@@ -570,9 +612,8 @@ export async function fetchEtymologyTrees(word: string): Promise<EtymologyTree[]
     }
 
     return dedupeEtymologyTrees(trees)
-  } catch {
-    return []
   } finally {
     clearTimeout(timeout)
+    options.signal?.removeEventListener("abort", abortFromCaller)
   }
 }

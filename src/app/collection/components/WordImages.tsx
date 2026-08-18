@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
+import { Info } from "lucide-react"
 import Image from "next/image"
 import type { Definition } from "../../lib/types"
 import { hasNounDefinition } from "../../lib/wordImageEligibility"
@@ -8,6 +9,8 @@ import type { WikimediaImageSource, WordImage } from "../../lib/wikimediaImages"
 import { cn } from "../../lib/utils"
 
 type WordImageResponse = { image: WordImage | null }
+
+const MAX_IMAGE_HEIGHT = 208
 
 async function getWordImage(word: string, source: WikimediaImageSource) {
   const params = new URLSearchParams({ word, source })
@@ -27,23 +30,70 @@ function useWordImage(word: string, source: WikimediaImageSource, enabled: boole
   })
 }
 
-function ImageCard({ image, compact }: { image: WordImage; compact: boolean }) {
+function ImageCredits({ image }: { image: WordImage }) {
+  const creditText = [image.creator ? `By ${image.creator}` : undefined, image.license].filter(Boolean).join(" · ")
+
   return (
-    <figure className="min-w-0 overflow-hidden rounded-lg border border-border bg-white">
-      <a href={image.filePageUrl} target="_blank" rel="noopener noreferrer" className="block">
-        <div className="flex h-40 items-center justify-center bg-neutral-100 sm:h-52">
-          <Image
-            unoptimized
-            src={image.imageUrl}
-            width={image.width}
-            height={image.height}
-            sizes={compact ? "50vw" : "(max-width: 767px) 100vw, 50vw"}
-            alt={image.alt}
-            className="h-full w-full object-contain"
-          />
+    <details className="group relative">
+      <summary
+        aria-label={`${image.sourceTitle} image credits`}
+        title={creditText || "Image credits"}
+        className="flex size-6 cursor-help list-none items-center justify-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden"
+      >
+        <Info aria-hidden="true" className="size-3.5" />
+      </summary>
+      <div className="invisible absolute bottom-full right-0 z-20 w-max max-w-64 pb-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 group-open:visible group-open:opacity-100">
+        <div className="flex flex-col gap-1 rounded-md border border-border bg-white px-2.5 py-2 text-left text-xs text-neutral-600 shadow-md">
+          {image.creator && <span>By {image.creator}</span>}
+          {image.license && image.licenseUrl ? (
+            <a
+              href={image.licenseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline transition hover:text-primary"
+            >
+              {image.license}
+            </a>
+          ) : image.license ? <span>{image.license}</span> : null}
+          <a
+            href={image.filePageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline transition hover:text-primary"
+          >
+            Image details
+          </a>
         </div>
+      </div>
+    </details>
+  )
+}
+
+function ImageCard({ image }: { image: WordImage }) {
+  const cardWidth = Math.max(1, Math.min(image.width, Math.round((image.width / image.height) * MAX_IMAGE_HEIGHT)))
+
+  return (
+    <figure
+      style={{ width: cardWidth, alignSelf: "start" }}
+      className="min-w-0 max-w-full justify-self-center rounded-lg border border-border bg-white"
+    >
+      <a
+        href={image.filePageUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block overflow-hidden rounded-t-lg bg-neutral-100"
+      >
+        <Image
+          unoptimized
+          src={image.imageUrl}
+          width={image.width}
+          height={image.height}
+          sizes="(max-width: 767px) 50vw, 416px"
+          alt={image.alt}
+          className="block h-auto w-full"
+        />
       </a>
-      <figcaption className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2 text-xs text-neutral-500 sm:flex-row sm:items-baseline sm:gap-1.5">
+      <figcaption className="flex min-w-0 items-center justify-between gap-1 border-t border-border px-2 py-1 text-xs text-neutral-500">
         <a
           href={image.sourcePageUrl}
           target="_blank"
@@ -52,15 +102,7 @@ function ImageCard({ image, compact }: { image: WordImage; compact: boolean }) {
         >
           {image.sourceTitle}
         </a>
-        {image.creator && <span className="truncate">{image.creator}</span>}
-        <a
-          href={image.licenseUrl ?? image.filePageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 underline transition hover:text-primary sm:ml-auto"
-        >
-          {image.license ?? "Image source"}
-        </a>
+        <ImageCredits image={image} />
       </figcaption>
     </figure>
   )
@@ -77,7 +119,7 @@ export default function WordImages({ word, definitions }: { word: string; defini
   return (
     <section aria-label={`Images for ${word}`} className="my-4">
       <div className={cn("grid gap-2 sm:gap-3", images.length === 2 ? "grid-cols-2" : "max-w-md grid-cols-1")}>
-        {images.map((image) => <ImageCard key={image.source} image={image} compact={images.length === 2} />)}
+        {images.map((image) => <ImageCard key={image.source} image={image} />)}
       </div>
     </section>
   )
