@@ -6,7 +6,6 @@ import Image from "next/image"
 import type { Definition } from "../../lib/types"
 import { hasNounDefinition } from "../../lib/wordImageEligibility"
 import type { WikimediaImageSource, WordImage } from "../../lib/wikimediaImages"
-import { cn } from "../../lib/utils"
 
 type WordImageResponse = { image: WordImage | null }
 
@@ -34,15 +33,20 @@ function ImageCredits({ image }: { image: WordImage }) {
   const creditText = [image.creator ? `By ${image.creator}` : undefined, image.license].filter(Boolean).join(" · ")
 
   return (
-    <details className="group relative">
-      <summary
-        aria-label={`${image.sourceTitle} image credits`}
-        title={creditText || "Image credits"}
-        className="flex size-6 cursor-help list-none items-center justify-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden"
+    <div className="group relative">
+      <a
+        href={image.filePageUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${image.sourceTitle} image credits${creditText ? `: ${creditText}` : ""}`}
+        className="flex size-6 cursor-help items-center justify-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <Info aria-hidden="true" className="size-3.5" />
-      </summary>
-      <div className="invisible absolute bottom-full right-0 z-20 w-max max-w-64 pb-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 group-open:visible group-open:opacity-100">
+      </a>
+      <div
+        role="tooltip"
+        className="invisible absolute bottom-full right-0 z-20 w-max max-w-64 pb-1 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+      >
         <div className="flex flex-col gap-1 rounded-md border border-border bg-white px-2.5 py-2 text-left text-xs text-neutral-600 shadow-md">
           {image.creator && <span>By {image.creator}</span>}
           {image.license && image.licenseUrl ? (
@@ -65,7 +69,7 @@ function ImageCredits({ image }: { image: WordImage }) {
           </a>
         </div>
       </div>
-    </details>
+    </div>
   )
 }
 
@@ -75,7 +79,7 @@ function ImageCard({ image }: { image: WordImage }) {
   return (
     <figure
       style={{ width: cardWidth, alignSelf: "start" }}
-      className="min-w-0 max-w-full justify-self-center rounded-lg border border-border bg-white"
+      className="min-w-0 max-w-full rounded-lg border border-border bg-white"
     >
       <a
         href={image.filePageUrl}
@@ -118,7 +122,7 @@ export default function WordImages({ word, definitions }: { word: string; defini
 
   return (
     <section aria-label={`Images for ${word}`} className="my-4">
-      <div className={cn("grid gap-2 sm:gap-3", images.length === 2 ? "grid-cols-2" : "max-w-md grid-cols-1")}>
+      <div className="flex max-w-full items-start gap-2 sm:gap-3">
         {images.map((image) => <ImageCard key={image.source} image={image} />)}
       </div>
     </section>
