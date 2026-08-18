@@ -493,8 +493,44 @@ async function buildParentNode(
   return node
 }
 
-function treeSignature(entry: KaikkiEntry, references: EtymologyParentReference[]): string {
-  return `${entry.pos ?? ""}:${references.map(referenceKey).sort().join("|")}`
+function referenceTreeSignature(references: EtymologyParentReference[]): string {
+  return JSON.stringify(
+    references
+      .map((reference) => [
+        reference.word,
+        reference.lookupWord,
+        reference.languageCode,
+        reference.relation,
+        reference.gloss ?? null,
+        reference.romanization ?? null,
+        reference.uncertain ?? false,
+        reference.stopRecursion ?? false,
+      ])
+      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+  )
+}
+
+function treeNodeSignature(node: EtymologyTreeNode): string {
+  return JSON.stringify([
+    node.word,
+    node.language,
+    node.languageCode,
+    node.gloss ?? null,
+    node.romanization ?? null,
+    node.relationToChild ?? null,
+    node.uncertain ?? false,
+    node.parents.map(treeNodeSignature).sort(),
+  ])
+}
+
+export function dedupeEtymologyTrees(trees: EtymologyTree[]): EtymologyTree[] {
+  const seen = new Set<string>()
+  return trees.filter((tree) => {
+    const signature = treeNodeSignature(tree.root)
+    if (seen.has(signature)) return false
+    seen.add(signature)
+    return true
+  })
 }
 
 export async function fetchEtymologyTrees(word: string): Promise<EtymologyTree[]> {
@@ -509,7 +545,7 @@ export async function fetchEtymologyTrees(word: string): Promise<EtymologyTree[]
   try {
     const entries = (await fetchKaikkiEntries(word, context)).filter((entry) => entry.langCode === "en")
     const trees: EtymologyTree[] = []
-    const seen = new Set<string>()
+    const seenReferences = new Set<string>()
 
     for (const entry of entries) {
       if (trees.length >= MAX_TREES || context.nodeCount >= MAX_TREE_NODES) break
@@ -517,9 +553,9 @@ export async function fetchEtymologyTrees(word: string): Promise<EtymologyTree[]
       const references = extractEtymologyParentReferences(entry.etymologyTemplates)
       if (references.length === 0) continue
 
-      const signature = treeSignature(entry, references)
-      if (seen.has(signature)) continue
-      seen.add(signature)
+      const referencesSignature = referenceTreeSignature(references)
+      if (seenReferences.has(referencesSignature)) continue
+      seenReferences.add(referencesSignature)
 
       const parents = await Promise.all(
         references.map((reference) => buildParentNode(reference, 1, new Set([`en:${word}`]), context))
@@ -533,7 +569,7 @@ export async function fetchEtymologyTrees(word: string): Promise<EtymologyTree[]
       if (root.parents.length > 0) trees.push({ partOfSpeech: entry.pos, root })
     }
 
-    return trees
+    return dedupeEtymologyTrees(trees)
   } catch {
     return []
   } finally {

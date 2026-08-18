@@ -179,12 +179,6 @@ export default function WordDataPage({
               )}
             </span>
           </div>
-          <EtymologyTree
-            key={data.word}
-            word={data.word}
-            trees={data.etymologyTrees}
-            source={data.etymologyTreeSource}
-          />
           {data.etymologies?.length > 0 && (
             <ul className="space-y-3 max-w-[800px]">
               {data.etymologies.map((e, i) => (
@@ -198,6 +192,12 @@ export default function WordDataPage({
               ))}
             </ul>
           )}
+          <EtymologyTree
+            key={data.word}
+            word={data.word}
+            trees={data.etymologyTrees}
+            source={data.etymologyTreeSource}
+          />
         </>
       )}
     </div>

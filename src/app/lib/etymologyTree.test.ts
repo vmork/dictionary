@@ -1,10 +1,12 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
+  dedupeEtymologyTrees,
   extractEtymologyParentReferences,
   parseKaikkiJsonLines,
   type KaikkiTemplate,
 } from "./etymologyTree"
+import type { EtymologyTree } from "./types"
 
 test("parseKaikkiJsonLines keeps valid ancestry fields and ignores malformed lines", () => {
   const input = [
@@ -118,4 +120,38 @@ test("classic suffix syntax preserves display forms and glosses", () => {
       stopRecursion: true,
     },
   ])
+})
+
+test("identical trees shared by multiple parts of speech are shown once", () => {
+  const nounTree: EtymologyTree = {
+    partOfSpeech: "noun",
+    root: {
+      word: "flange",
+      language: "English",
+      languageCode: "en",
+      parents: [{
+        word: "flanche",
+        language: "Middle French",
+        languageCode: "frm",
+        relationToChild: "borrowed",
+        parents: [],
+      }],
+    },
+  }
+  const verbTree: EtymologyTree = {
+    partOfSpeech: "verb",
+    root: structuredClone(nounTree.root),
+  }
+  const distinctTree: EtymologyTree = {
+    partOfSpeech: "verb",
+    root: {
+      ...structuredClone(nounTree.root),
+      parents: [{
+        ...structuredClone(nounTree.root.parents[0]),
+        gloss: "flank, side",
+      }],
+    },
+  }
+
+  assert.deepEqual(dedupeEtymologyTrees([nounTree, verbTree, distinctTree]), [nounTree, distinctTree])
 })
